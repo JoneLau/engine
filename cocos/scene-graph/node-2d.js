@@ -414,7 +414,7 @@ var _mouseWheelHandler = function (event) {
     }
 };
 
-function _searchMaskInParent (node) {
+function _searchMaskInParent(node) {
     var Mask = cc.Mask;
     if (Mask) {
         var index = 0;
@@ -430,7 +430,7 @@ function _searchMaskInParent (node) {
     return null;
 }
 
-function _checkListeners (node, events) {
+function _checkListeners(node, events) {
     if (!(node._objFlags & Destroying)) {
         var i = 0;
         if (node._bubblingListeners) {
@@ -452,7 +452,7 @@ function _checkListeners (node, events) {
     return true;
 }
 
-function _doDispatchEvent (owner, event) {
+function _doDispatchEvent(owner, event) {
     var target, i;
     event.target = owner;
 
@@ -522,8 +522,8 @@ if (CC_EDITOR) {
  * @class Node
  * @extends _BaseNode
  */
- @ccclass("cc.Node")
-export default class Node extends BaseNode {
+@ccclass("cc.NodeUI")
+export default class NodeUI extends BaseNode {
     @property
     _opacity = 255;
 
@@ -572,7 +572,7 @@ export default class Node extends BaseNode {
     _zIndex = 0;
 
     @property
-    _is3DNode = false;
+    _hasChanged = false;
 
     // internal properties
 
@@ -1114,7 +1114,7 @@ export default class Node extends BaseNode {
     static BuiltinGroupIndex = BuiltinGroupIndex;
 
     // is node but not scene
-    static isNode (obj) {
+    static isNode(obj) {
         return obj instanceof Node && (obj.constructor === Node || !(obj instanceof cc.Scene));
     }
 
@@ -1123,7 +1123,7 @@ export default class Node extends BaseNode {
      * @method constructor
      * @param {String} [name]
      */
-    constructor (name) {
+    constructor(name) {
         super(name);
         this._reorderChildDirty = false;
 
@@ -1157,7 +1157,7 @@ export default class Node extends BaseNode {
 
     // OVERRIDES
 
-    _onSiblingIndexChanged (/*index*/) {
+    _onSiblingIndexChanged(/*index*/) {
         // update rendering scene graph, sort them by arrivalOrder
         var parent = this._parent;
         var siblings = parent._children;
@@ -1170,7 +1170,7 @@ export default class Node extends BaseNode {
         parent._delaySort();
     }
 
-    _onPreDestroy () {
+    _onPreDestroy() {
         var destroyByParent = this._onPreDestroyBase();
 
         // Actions
@@ -1216,7 +1216,7 @@ export default class Node extends BaseNode {
         }
     }
 
-    _onPostActivated (active) {
+    _onPostActivated(active) {
         var actionManager = ActionManagerExist ? cc.director.getActionManager() : null;
         if (active) {
             // ActionManager & EventManager
@@ -1239,7 +1239,7 @@ export default class Node extends BaseNode {
         }
     }
 
-    _onHierarchyChanged (oldParent) {
+    _onHierarchyChanged(oldParent) {
         this._updateOrderOfArrival();
         if (this._parent) {
             this._parent._delaySort();
@@ -1252,7 +1252,7 @@ export default class Node extends BaseNode {
 
     // INTERNAL
 
-    _upgrade_1x_to_2x () {
+    _upgrade_1x_to_2x() {
         // Upgrade scaleX, scaleY from v1.x
         // TODO: remove in future version, 3.0 ?
         if (this._scaleX !== undefined) {
@@ -1303,7 +1303,7 @@ export default class Node extends BaseNode {
     /*
      * The initializer for Node which will be called before all components onLoad
      */
-    _onBatchCreated () {
+    _onBatchCreated() {
         this._upgrade_1x_to_2x();
 
         this._updateOrderOfArrival();
@@ -1332,7 +1332,7 @@ export default class Node extends BaseNode {
     }
 
     // the same as _onBatchCreated but untouch prefab
-    _onBatchRestored () {
+    _onBatchRestored() {
         this._upgrade_1x_to_2x();
 
         if (!this._activeInHierarchy) {
@@ -1353,7 +1353,7 @@ export default class Node extends BaseNode {
 
     // EVENT TARGET
 
-    _checknSetupSysEvent (type) {
+    _checknSetupSysEvent(type) {
         let newAdded = false;
         let forDispatch = false;
         if (_touchEvents.indexOf(type) !== -1) {
@@ -1445,7 +1445,7 @@ export default class Node extends BaseNode {
      * node.on(cc.Node.EventType.TOUCH_CANCEL, callback, this);
      * node.on(cc.Node.EventType.ANCHOR_CHANGED, callback);
      */
-    on (type, callback, target, useCapture) {
+    on(type, callback, target, useCapture) {
         let forDispatch = this._checknSetupSysEvent(type);
         if (forDispatch) {
             return this._onDispatch(type, callback, target, useCapture);
@@ -1453,20 +1453,20 @@ export default class Node extends BaseNode {
         else {
             switch (type) {
                 case EventType.POSITION_CHANGED:
-                this._eventMask |= POSITION_ON;
-                break;
+                    this._eventMask |= POSITION_ON;
+                    break;
                 case EventType.SCALE_CHANGED:
-                this._eventMask |= SCALE_ON;
-                break;
+                    this._eventMask |= SCALE_ON;
+                    break;
                 case EventType.ROTATION_CHANGED:
-                this._eventMask |= ROTATION_ON;
-                break;
+                    this._eventMask |= ROTATION_ON;
+                    break;
                 case EventType.SIZE_CHANGED:
-                this._eventMask |= SIZE_ON;
-                break;
+                    this._eventMask |= SIZE_ON;
+                    break;
                 case EventType.ANCHOR_CHANGED:
-                this._eventMask |= ANCHOR_ON;
-                break;
+                    this._eventMask |= ANCHOR_ON;
+                    break;
             }
             if (!this._bubblingListeners) {
                 this._bubblingListeners = new EventTarget();
@@ -1497,7 +1497,7 @@ export default class Node extends BaseNode {
      * @example
      * node.once(cc.Node.EventType.ANCHOR_CHANGED, callback);
      */
-    once (type, callback, target, useCapture) {
+    once(type, callback, target, useCapture) {
         let forDispatch = this._checknSetupSysEvent(type);
         let eventType_hasOnceListener = '__ONCE_FLAG:' + type;
 
@@ -1522,7 +1522,7 @@ export default class Node extends BaseNode {
         }
     }
 
-    _onDispatch (type, callback, target, useCapture) {
+    _onDispatch(type, callback, target, useCapture) {
         // Accept also patameters like: (type, callback, useCapture)
         if (typeof target === 'boolean') {
             useCapture = target;
@@ -1542,7 +1542,7 @@ export default class Node extends BaseNode {
             listeners = this._bubblingListeners = this._bubblingListeners || new EventTarget();
         }
 
-        if ( !listeners.hasEventListener(type, callback, target) ) {
+        if (!listeners.hasEventListener(type, callback, target)) {
             listeners.add(type, callback, target);
 
             if (target && target.__eventTargets)
@@ -1567,7 +1567,7 @@ export default class Node extends BaseNode {
      * node.off(cc.Node.EventType.TOUCH_START, callback, this.node);
      * node.off(cc.Node.EventType.ANCHOR_CHANGED, callback, this);
      */
-    off (type, callback, target, useCapture) {
+    off(type, callback, target, useCapture) {
         let touchEvent = _touchEvents.indexOf(type) !== -1;
         let mouseEvent = !touchEvent && _mouseEvents.indexOf(type) !== -1;
         if (touchEvent || mouseEvent) {
@@ -1594,26 +1594,26 @@ export default class Node extends BaseNode {
             if (!hasListeners) {
                 switch (type) {
                     case EventType.POSITION_CHANGED:
-                    this._eventMask &= ~POSITION_ON;
-                    break;
+                        this._eventMask &= ~POSITION_ON;
+                        break;
                     case EventType.SCALE_CHANGED:
-                    this._eventMask &= ~SCALE_ON;
-                    break;
+                        this._eventMask &= ~SCALE_ON;
+                        break;
                     case EventType.ROTATION_CHANGED:
-                    this._eventMask &= ~ROTATION_ON;
-                    break;
+                        this._eventMask &= ~ROTATION_ON;
+                        break;
                     case EventType.SIZE_CHANGED:
-                    this._eventMask &= ~SIZE_ON;
-                    break;
+                        this._eventMask &= ~SIZE_ON;
+                        break;
                     case EventType.ANCHOR_CHANGED:
-                    this._eventMask &= ~ANCHOR_ON;
-                    break;
+                        this._eventMask &= ~ANCHOR_ON;
+                        break;
                 }
             }
         }
     }
 
-    _offDispatch (type, callback, target, useCapture) {
+    _offDispatch(type, callback, target, useCapture) {
         // Accept also patameters like: (type, callback, useCapture)
         if (typeof target === 'boolean') {
             useCapture = target;
@@ -1645,7 +1645,7 @@ export default class Node extends BaseNode {
      * @example
      * node.targetOff(target);
      */
-    targetOff (target) {
+    targetOff(target) {
         let listeners = this._bubblingListeners;
         if (listeners) {
             listeners.targetOff(target);
@@ -1688,7 +1688,7 @@ export default class Node extends BaseNode {
      * @param {String} type - The type of event.
      * @return {Boolean} True if a callback of the specified type is registered; false otherwise.
      */
-    hasEventListener (type) {
+    hasEventListener(type) {
         let has = false;
         if (this._bubblingListeners) {
             has = this._bubblingListeners.hasEventListener(type);
@@ -1717,7 +1717,7 @@ export default class Node extends BaseNode {
      * eventTarget.emit('fire', event);
      * eventTarget.emit('fire', message, emitter);
      */
-    emit (type, arg1, arg2, arg3, arg4, arg5) {
+    emit(type, arg1, arg2, arg3, arg4, arg5) {
         if (this._bubblingListeners) {
             this._bubblingListeners.emit(type, arg1, arg2, arg3, arg4, arg5);
         }
@@ -1732,7 +1732,7 @@ export default class Node extends BaseNode {
      * @method dispatchEvent
      * @param {Event} event - The Event object that is dispatched into the event flow
      */
-    dispatchEvent (event) {
+    dispatchEvent(event) {
         _doDispatchEvent(this, event);
         _cachedArray.length = 0;
     }
@@ -1749,7 +1749,7 @@ export default class Node extends BaseNode {
      * @example
      * node.pauseSystemEvents(true);
      */
-    pauseSystemEvents (recursive) {
+    pauseSystemEvents(recursive) {
         eventManager.pauseTarget(this, recursive);
     }
 
@@ -1765,11 +1765,11 @@ export default class Node extends BaseNode {
      * @example
      * node.resumeSystemEvents(true);
      */
-    resumeSystemEvents (recursive) {
+    resumeSystemEvents(recursive) {
         eventManager.resumeTarget(this, recursive);
     }
 
-    _hitTest (point, listener) {
+    _hitTest(point, listener) {
         let w = this._contentSize.width,
             h = this._contentSize.height,
             cameraPt = _vec2a,
@@ -1825,7 +1825,7 @@ export default class Node extends BaseNode {
      * @param {Array} array - the array to receive targets
      * @example {@link cocos2d/core/event/_getCapturingTargets.js}
      */
-    _getCapturingTargets (type, array) {
+    _getCapturingTargets(type, array) {
         var parent = this.parent;
         while (parent) {
             if (parent._capturingListeners && parent._capturingListeners.hasEventListener(type)) {
@@ -1846,7 +1846,7 @@ export default class Node extends BaseNode {
      * @param {String} type - the event type
      * @param {Array} array - the array to receive targets
      */
-    _getBubblingTargets (type, array) {
+    _getBubblingTargets(type, array) {
         var parent = this.parent;
         while (parent) {
             if (parent._bubblingListeners && parent._bubblingListeners.hasEventListener(type)) {
@@ -1856,7 +1856,7 @@ export default class Node extends BaseNode {
         }
     }
 
-// TRANSFORM RELATED
+    // TRANSFORM RELATED
     /**
      * !#en Returns a copy of the position (x, y) of the node in its parent's coordinates.
      * !#zh 获取节点在父节点坐标系中的位置（x, y）。
@@ -1865,7 +1865,7 @@ export default class Node extends BaseNode {
      * @example
      * cc.log("Node Position: " + node.getPosition());
      */
-    getPosition () {
+    getPosition() {
         return new cc.Vec2(this._position);
     }
 
@@ -1884,7 +1884,7 @@ export default class Node extends BaseNode {
      * @param {Number} [y] - Y coordinate for position
      * @example {@link cocos2d/core/utils/base-node/setPosition.js}
      */
-    setPosition (newPosOrX, y) {
+    setPosition(newPosOrX, y) {
         var x;
         if (y === undefined) {
             x = newPosOrX.x;
@@ -1938,7 +1938,7 @@ export default class Node extends BaseNode {
      * @example
      * cc.log("Node Scale: " + node.getScale());
      */
-    getScale () {
+    getScale() {
         if (this._scale.x !== this._scale.y)
             cc.logID(1603);
         return this._scale.x;
@@ -1954,7 +1954,7 @@ export default class Node extends BaseNode {
      * node.setScale(cc.v2(1, 1));
      * node.setScale(1);
      */
-    setScale (x, y) {
+    setScale(x, y) {
         if (x && typeof x !== 'number') {
             y = x.y;
             x = x.x;
@@ -1998,7 +1998,7 @@ export default class Node extends BaseNode {
      * @example
      * cc.log("Content Size: " + node.getContentSize());
      */
-    getContentSize () {
+    getContentSize() {
         return cc.size(this._contentSize.width, this._contentSize.height);
     }
 
@@ -2015,7 +2015,7 @@ export default class Node extends BaseNode {
      * node.setContentSize(cc.size(100, 100));
      * node.setContentSize(100, 100);
      */
-    setContentSize (size, height) {
+    setContentSize(size, height) {
         var locContentSize = this._contentSize;
         var clone;
         if (height === undefined) {
@@ -2065,7 +2065,7 @@ export default class Node extends BaseNode {
      * @example
      * cc.log("Node AnchorPoint: " + node.getAnchorPoint());
      */
-    getAnchorPoint () {
+    getAnchorPoint() {
         return cc.v2(this._anchorPoint);
     }
 
@@ -2091,7 +2091,7 @@ export default class Node extends BaseNode {
      * node.setAnchorPoint(cc.v2(1, 1));
      * node.setAnchorPoint(1, 1);
      */
-    setAnchorPoint (point, y) {
+    setAnchorPoint(point, y) {
         var locAnchorPoint = this._anchorPoint;
         if (y === undefined) {
             if ((point.x === locAnchorPoint.x) && (point.y === locAnchorPoint.y))
@@ -2116,7 +2116,7 @@ export default class Node extends BaseNode {
      * @param {Vec3} out
      * @param {Vec3} vec3
      */
-    _invTransformPoint (out, pos) {
+    _invTransformPoint(out, pos) {
         if (this._parent) {
             this._parent._invTransformPoint(out, pos);
         } else {
@@ -2144,7 +2144,7 @@ export default class Node extends BaseNode {
      * @param {Vec3} out
      * @return {Vec3}
      */
-    getWorldPos (out) {
+    getWorldPos(out) {
         math.vec3.copy(out, this._position);
         let curr = this._parent;
         while (curr) {
@@ -2165,7 +2165,7 @@ export default class Node extends BaseNode {
      * @method setWorldPos
      * @param {vec3} pos
      */
-    setWorldPos (pos) {
+    setWorldPos(pos) {
         // NOTE: this is faster than invert world matrix and transform the point
         if (this._parent) {
             this._parent._invTransformPoint(this._position, pos);
@@ -2194,7 +2194,7 @@ export default class Node extends BaseNode {
      * @param {Quat} out
      * @return {Quat}
      */
-    getWorldRot (out) {
+    getWorldRot(out) {
         math.quat.copy(out, this._quat);
         let curr = this._parent;
         while (curr) {
@@ -2210,7 +2210,7 @@ export default class Node extends BaseNode {
      * @method setWorldRot
      * @param {Quat} rot
      */
-    setWorldRot (quat) {
+    setWorldRot(quat) {
         if (this._parent) {
             this._parent.getWorldRot(this._quat);
             math.quat.conjugate(this._quat, this._quat);
@@ -2222,7 +2222,7 @@ export default class Node extends BaseNode {
         this.setLocalDirty(LocalDirtyFlag.ROTATION);
     }
 
-    getWorldRT (out) {
+    getWorldRT(out) {
         let opos = _vec3_temp;
         let orot = _quat_temp;
         math.vec3.copy(opos, this._position);
@@ -2251,7 +2251,7 @@ export default class Node extends BaseNode {
      * @param {Vec3} pos
      * @param {Vec3} [up] - default is (0,1,0)
      */
-    lookAt (pos, up) {
+    lookAt(pos, up) {
         this.getWorldPos(_vec3_temp);
         math.vec3.sub(_vec3_temp, _vec3_temp, pos); // NOTE: we use -z for view-dir
         math.vec3.normalize(_vec3_temp, _vec3_temp);
@@ -2260,7 +2260,15 @@ export default class Node extends BaseNode {
         this.setWorldRot(_quat_temp);
     }
 
-    _updateLocalMatrix () {
+    resetHasChanged() {
+        this._hasChanged = false;
+        let len = this._children.length;
+        for (let i = 0; i < len; ++i) {
+            this._children[i].resetHasChanged();
+        }
+    }
+
+    _updateLocalMatrix() {
         let dirtyFlag = this._localMatDirty;
         if (!dirtyFlag) return;
 
@@ -2327,7 +2335,7 @@ export default class Node extends BaseNode {
         this._worldMatDirty = true;
     }
 
-    _calculWorldMatrix () {
+    _calculWorldMatrix() {
         // Avoid as much function call as possible
         if (this._localMatDirty) {
             this._updateLocalMatrix();
@@ -2344,9 +2352,9 @@ export default class Node extends BaseNode {
         this._worldMatDirty = false;
     }
 
-    _mulMat (out, a, b) {
-        let aa=a.m00, ab=a.m01, ac=a.m04, ad=a.m05, atx=a.m12, aty=a.m13;
-        let ba=b.m00, bb=b.m01, bc=b.m04, bd=b.m05, btx=b.m12, bty=b.m13;
+    _mulMat(out, a, b) {
+        let aa = a.m00, ab = a.m01, ac = a.m04, ad = a.m05, atx = a.m12, aty = a.m13;
+        let ba = b.m00, bb = b.m01, bc = b.m04, bd = b.m05, btx = b.m12, bty = b.m13;
         if (ab !== 0 || ac !== 0) {
             out.m00 = ba * aa + bb * ac;
             out.m01 = ba * ab + bb * ad;
@@ -2365,7 +2373,7 @@ export default class Node extends BaseNode {
         }
     }
 
-    _updateWorldMatrix () {
+    _updateWorldMatrix() {
         if (this._parent) {
             this._parent._updateWorldMatrix();
         }
@@ -2379,12 +2387,12 @@ export default class Node extends BaseNode {
         }
     }
 
-    setLocalDirty (flag) {
+    setLocalDirty(flag) {
         this._localMatDirty = this._localMatDirty | flag;
         this._worldMatDirty = true;
     }
 
-    setWorldDirty () {
+    setWorldDirty() {
         this._worldMatDirty = true;
     }
 
@@ -2399,7 +2407,7 @@ export default class Node extends BaseNode {
      * let mat4 = cc.mat4();
      * node.getLocalMatrix(mat4);
      */
-    getLocalMatrix (out) {
+    getLocalMatrix(out) {
         this._updateLocalMatrix();
         return math.mat4.copy(out, this._matrix);
     }
@@ -2415,7 +2423,7 @@ export default class Node extends BaseNode {
      * let mat4 = cc.mat4();
      * node.getWorldMatrix(mat4);
      */
-    getWorldMatrix (out) {
+    getWorldMatrix(out) {
         this._updateWorldMatrix();
         return math.mat4.copy(out, this._worldMatrix);
     }
@@ -2433,7 +2441,7 @@ export default class Node extends BaseNode {
      * @example
      * var newVec2 = node.convertToNodeSpace(cc.v2(100, 100));
      */
-    convertToNodeSpace (worldPoint) {
+    convertToNodeSpace(worldPoint) {
         this._updateWorldMatrix();
         math.mat4.invert(_mat4_temp, this._worldMatrix);
         let out = new cc.Vec2();
@@ -2454,7 +2462,7 @@ export default class Node extends BaseNode {
      * @example
      * var newVec2 = node.convertToWorldSpace(cc.v2(100, 100));
      */
-    convertToWorldSpace (nodePoint) {
+    convertToWorldSpace(nodePoint) {
         this._updateWorldMatrix();
         let out = new cc.Vec2(
             nodePoint.x - this._anchorPoint.x * this._contentSize.width,
@@ -2474,7 +2482,7 @@ export default class Node extends BaseNode {
      * @example
      * var newVec2 = node.convertToNodeSpaceAR(cc.v2(100, 100));
      */
-    convertToNodeSpaceAR (worldPoint) {
+    convertToNodeSpaceAR(worldPoint) {
         this._updateWorldMatrix();
         math.mat4.invert(_mat4_temp, this._worldMatrix);
         let out = new cc.Vec2();
@@ -2492,13 +2500,13 @@ export default class Node extends BaseNode {
      * @example
      * var newVec2 = node.convertToWorldSpaceAR(cc.v2(100, 100));
      */
-    convertToWorldSpaceAR (nodePoint) {
+    convertToWorldSpaceAR(nodePoint) {
         this._updateWorldMatrix();
         let out = new cc.Vec2();
         return math.vec2.transformMat4(out, nodePoint, this._worldMatrix);
     }
 
-// OLD TRANSFORM ACCESS APIs
+    // OLD TRANSFORM ACCESS APIs
     /**
      * !#en
      * Returns the matrix that transform the node's (local) space coordinates into the parent's space coordinates.<br/>
@@ -2512,7 +2520,7 @@ export default class Node extends BaseNode {
      * let affineTransform = cc.AffineTransform.create();
      * node.getNodeToParentTransform(affineTransform);
      */
-    getNodeToParentTransform (out) {
+    getNodeToParentTransform(out) {
         if (!out) {
             out = AffineTrans.identity();
         }
@@ -2544,7 +2552,7 @@ export default class Node extends BaseNode {
      * let affineTransform = cc.AffineTransform.create();
      * node.getNodeToParentTransformAR(affineTransform);
      */
-    getNodeToParentTransformAR (out) {
+    getNodeToParentTransformAR(out) {
         if (!out) {
             out = AffineTrans.identity();
         }
@@ -2563,7 +2571,7 @@ export default class Node extends BaseNode {
      * let affineTransform = cc.AffineTransform.create();
      * node.getNodeToWorldTransform(affineTransform);
      */
-    getNodeToWorldTransform (out) {
+    getNodeToWorldTransform(out) {
         if (!out) {
             out = AffineTrans.identity();
         }
@@ -2594,7 +2602,7 @@ export default class Node extends BaseNode {
      * let affineTransform = cc.AffineTransform.create();
      * node.getNodeToWorldTransformAR(affineTransform);
      */
-    getNodeToWorldTransformAR (out) {
+    getNodeToWorldTransformAR(out) {
         if (!out) {
             out = AffineTrans.identity();
         }
@@ -2617,7 +2625,7 @@ export default class Node extends BaseNode {
      * let affineTransform = cc.AffineTransform.create();
      * node.getParentToNodeTransform(affineTransform);
      */
-    getParentToNodeTransform (out) {
+    getParentToNodeTransform(out) {
         if (!out) {
             out = AffineTrans.identity();
         }
@@ -2637,7 +2645,7 @@ export default class Node extends BaseNode {
      * let affineTransform = cc.AffineTransform.create();
      * node.getWorldToNodeTransform(affineTransform);
      */
-    getWorldToNodeTransform (out) {
+    getWorldToNodeTransform(out) {
         if (!out) {
             out = AffineTrans.identity();
         }
@@ -2656,7 +2664,7 @@ export default class Node extends BaseNode {
      * @example
      * var newVec2 = node.convertTouchToNodeSpace(touch);
      */
-    convertTouchToNodeSpace (touch) {
+    convertTouchToNodeSpace(touch) {
         return this.convertToNodeSpace(touch.getLocation());
     }
 
@@ -2670,7 +2678,7 @@ export default class Node extends BaseNode {
      * @example
      * var newVec2 = node.convertTouchToNodeSpaceAR(touch);
      */
-    convertTouchToNodeSpaceAR (touch) {
+    convertTouchToNodeSpaceAR(touch) {
         return this.convertToNodeSpaceAR(touch.getLocation());
     }
 
@@ -2684,7 +2692,7 @@ export default class Node extends BaseNode {
      * @example
      * var boundingBox = node.getBoundingBox();
      */
-    getBoundingBox () {
+    getBoundingBox() {
         this._updateLocalMatrix();
         let width = this._contentSize.width;
         let height = this._contentSize.height;
@@ -2708,7 +2716,7 @@ export default class Node extends BaseNode {
      * @example
      * var newRect = node.getBoundingBoxToWorld();
      */
-    getBoundingBoxToWorld () {
+    getBoundingBoxToWorld() {
         if (this._parent) {
             this._parent._updateWorldMatrix();
             return this._getBoundingBoxTo(this._parent._worldMatrix);
@@ -2718,7 +2726,7 @@ export default class Node extends BaseNode {
         }
     }
 
-    _getBoundingBoxTo (parentMat) {
+    _getBoundingBoxTo(parentMat) {
         this._updateLocalMatrix();
         let width = this._contentSize.width;
         let height = this._contentSize.height;
@@ -2747,7 +2755,7 @@ export default class Node extends BaseNode {
         return rect;
     }
 
-    _updateOrderOfArrival () {
+    _updateOrderOfArrival() {
         var arrivalOrder = ++_globalOrderOfArrival;
         this._localZOrder = (this._localZOrder & 0xffff0000) | arrivalOrder;
     }
@@ -2764,7 +2772,7 @@ export default class Node extends BaseNode {
      * @example
      * node.addChild(newNode, 1, "node");
      */
-    addChild (child, zIndex, name) {
+    addChild(child, zIndex, name) {
         if (CC_DEV && !cc.Node.isNode(child)) {
             return cc.errorID(1634, cc.js.getClassName(child));
         }
@@ -2789,7 +2797,7 @@ export default class Node extends BaseNode {
      * @example
      * node.cleanup();
      */
-    cleanup () {
+    cleanup() {
         // actions
         ActionManagerExist && cc.director.getActionManager().removeAllActionsFromTarget(this);
         // event
@@ -2811,7 +2819,7 @@ export default class Node extends BaseNode {
      *
      * @method sortAllChildren
      */
-    sortAllChildren () {
+    sortAllChildren() {
         if (this._reorderChildDirty) {
             this._reorderChildDirty = false;
             var _children = this._children;
@@ -2839,14 +2847,14 @@ export default class Node extends BaseNode {
         }
     }
 
-    _delaySort () {
+    _delaySort() {
         if (!this._reorderChildDirty) {
             this._reorderChildDirty = true;
             cc.director.__fastOn(cc.Director.EVENT_AFTER_UPDATE, this.sortAllChildren, this);
         }
     }
 
-    _restoreProperties () {
+    _restoreProperties() {
         /*
          * TODO: Refine this code after completing undo/redo 2.0.
          * The node will be destroyed when deleting in the editor,
@@ -3019,4 +3027,4 @@ js.getset(_p, 'rotation', _p.getRotation, _p.setRotation);
 js.getset(_p, 'position', _p.getPosition, _p.setPosition, false, true);
 js.getset(_p, 'scale', _p.getScale, _p.setScale, false, true);
 
-cc.Node2D = Node;
+cc.NodeUI = NodeUI;

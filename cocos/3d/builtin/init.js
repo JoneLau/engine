@@ -7,7 +7,7 @@ import effects from './effects';
 
 let builtinResMgr = {
     // this should be called after renderer initialized
-    initBuiltinRes: function(device) {
+    initBuiltinRes: function (device) {
         builtinResMgr.device = device;
         // let canvas = document.createElement('canvas');
         // let context = canvas.getContext('2d');
@@ -82,6 +82,13 @@ let builtinResMgr = {
         defaultMtl._uuid = 'default-material';
         defaultMtl.setDefines({ USE_COLOR: true });
         defaultMtl.effectAsset = efxs[0];
+        defaultMtl.setProperty('color', cc.color('#FF00FF'));
+
+        // sprite material
+        let spriteMtl = new Material();
+        spriteMtl._uuid = 'sprite-material';
+        spriteMtl.effectAsset = efxs[2];
+        spriteMtl.define('USE_TEXTURE', true);
         defaultMtl.setProperty('color', cc.color('#FF00FF'));
 
         let builtins = {
