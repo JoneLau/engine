@@ -37,7 +37,7 @@ const INSET_TOP = 1;
 const INSET_RIGHT = 2;
 const INSET_BOTTOM = 3;
 
-let temp_uvs = [{u: 0, v: 0}, {u: 0, v: 0}, {u: 0, v: 0}, {u: 0, v: 0}];
+let temp_uvs = [{ u: 0, v: 0 }, { u: 0, v: 0 }, { u: 0, v: 0 }, { u: 0, v: 0 }];
 
 /**
  * !#en
@@ -68,7 +68,7 @@ let temp_uvs = [{u: 0, v: 0}, {u: 0, v: 0}, {u: 0, v: 0}, {u: 0, v: 0}];
 export default class SpriteFrame extends Asset {
     // Use this property to set texture when loading dependency
     @property
-    set _textureSetter (texture) {
+    set _textureSetter(texture) {
         if (texture) {
             if (CC_EDITOR && !(texture instanceof cc.Texture2D)) {
                 // just building
@@ -99,10 +99,10 @@ export default class SpriteFrame extends Asset {
      * @type {Number}
      * @default 0
      */
-    get insetTop () {
+    get insetTop() {
         return this._capInsets[INSET_TOP];
     }
-    set insetTop (value) {
+    set insetTop(value) {
         this._capInsets[INSET_TOP] = value;
         if (this._texture) {
             this._calculateSlicedUV();
@@ -116,10 +116,10 @@ export default class SpriteFrame extends Asset {
      * @type {Number}
      * @default 0
      */
-    get insetBottom () {
+    get insetBottom() {
         return this._capInsets[INSET_BOTTOM];
     }
-    set insetBottom (value) {
+    set insetBottom(value) {
         this._capInsets[INSET_BOTTOM] = value;
         if (this._texture) {
             this._calculateSlicedUV();
@@ -133,10 +133,10 @@ export default class SpriteFrame extends Asset {
      * @type {Number}
      * @default 0
      */
-    get insetLeft () {
+    get insetLeft() {
         return this._capInsets[INSET_LEFT];
     }
-    set insetLeft (value) {
+    set insetLeft(value) {
         this._capInsets[INSET_LEFT] = value;
         if (this._texture) {
             this._calculateSlicedUV();
@@ -150,10 +150,10 @@ export default class SpriteFrame extends Asset {
      * @type {Number}
      * @default 0
      */
-    get insetRight () {
+    get insetRight() {
         return this._capInsets[INSET_RIGHT];
     }
-    set insetRight (value) {
+    set insetRight(value) {
         this._capInsets[INSET_RIGHT] = value;
         if (this._texture) {
             this._calculateSlicedUV();
@@ -172,7 +172,7 @@ export default class SpriteFrame extends Asset {
      * @param {Vec2} [offset] - The offset of the frame in the texture
      * @param {Size} [originalSize] - The size of the frame in the texture
      */
-    constructor () {
+    constructor() {
         super();
         // Init EventTarget data
         EventTarget.call(this);
@@ -204,6 +204,11 @@ export default class SpriteFrame extends Asset {
         this._texture = null;
         this._textureFilename = '';
 
+        this._capInsets[INSET_BOTTOM] = 0;
+        this._capInsets[INSET_LEFT] = 0;
+        this._capInsets[INSET_RIGHT] = 1;
+        this._capInsets[INSET_TOP] = 1;
+
         // store original info before packed to dynamic atlas
         this._original = null;
 
@@ -225,7 +230,7 @@ export default class SpriteFrame extends Asset {
      * @method textureLoaded
      * @returns {boolean}
      */
-    textureLoaded () {
+    textureLoaded() {
         return this._texture && this._texture.loaded;
     }
 
@@ -235,7 +240,7 @@ export default class SpriteFrame extends Asset {
      * @method isRotated
      * @return {Boolean}
      */
-    isRotated () {
+    isRotated() {
         return this._rotated;
     }
 
@@ -245,7 +250,7 @@ export default class SpriteFrame extends Asset {
      * @method setRotated
      * @param {Boolean} bRotated
      */
-    setRotated (bRotated) {
+    setRotated(bRotated) {
         this._rotated = bRotated;
     }
 
@@ -255,7 +260,7 @@ export default class SpriteFrame extends Asset {
      * @method getRect
      * @return {Rect}
      */
-    getRect () {
+    getRect() {
         return cc.rect(this._rect);
     }
 
@@ -265,7 +270,7 @@ export default class SpriteFrame extends Asset {
      * @method setRect
      * @param {Rect} rect
      */
-    setRect (rect) {
+    setRect(rect) {
         this._rect = rect;
     }
 
@@ -275,7 +280,7 @@ export default class SpriteFrame extends Asset {
      * @method getOriginalSize
      * @return {Size}
      */
-    getOriginalSize () {
+    getOriginalSize() {
         return cc.size(this._originalSize);
     }
 
@@ -285,7 +290,7 @@ export default class SpriteFrame extends Asset {
      * @method setOriginalSize
      * @param {Size} size
      */
-    setOriginalSize (size) {
+    setOriginalSize(size) {
         if (!this._originalSize) {
             this._originalSize = cc.size(size);
         } else {
@@ -300,11 +305,11 @@ export default class SpriteFrame extends Asset {
      * @method getTexture
      * @return {Texture2D}
      */
-    getTexture () {
+    getTexture() {
         return this._texture;
     }
 
-    _textureLoadedCallback () {
+    _textureLoadedCallback() {
         let self = this;
         let texture = this._texture;
         if (!texture) {
@@ -349,7 +354,7 @@ export default class SpriteFrame extends Asset {
      * @method _refreshTexture
      * @param {Texture2D} texture
      */
-    _refreshTexture (texture) {
+    _refreshTexture(texture) {
         this._texture = texture;
         if (texture.loaded) {
             this._textureLoadedCallback();
@@ -365,7 +370,7 @@ export default class SpriteFrame extends Asset {
      * @method getOffset
      * @return {Vec2}
      */
-    getOffset () {
+    getOffset() {
         return cc.v2(this._offset);
     }
 
@@ -375,7 +380,7 @@ export default class SpriteFrame extends Asset {
      * @method setOffset
      * @param {Vec2} offsets
      */
-    setOffset (offsets) {
+    setOffset(offsets) {
         this._offset = cc.v2(offsets);
     }
 
@@ -385,7 +390,7 @@ export default class SpriteFrame extends Asset {
      * @method clone
      * @return {SpriteFrame}
      */
-    clone () {
+    clone() {
         return new SpriteFrame(this._texture || this._textureFilename, this._rect, this._rotated, this._offset, this._originalSize);
     }
 
@@ -400,7 +405,7 @@ export default class SpriteFrame extends Asset {
      * @param {Size} [originalSize=rect.size]
      * @return {Boolean}
      */
-    setTexture (textureOrTextureFile, rect, rotated, offset, originalSize) {
+    setTexture(textureOrTextureFile, rect, rotated, offset, originalSize) {
         if (rect) {
             this.setRect(rect);
         }
@@ -437,7 +442,7 @@ export default class SpriteFrame extends Asset {
         return true;
     }
 
-    _loadTexture () {
+    _loadTexture() {
         if (this._textureFilename) {
             let texture = textureUtil.loadImage(this._textureFilename);
             this._refreshTexture(texture);
@@ -462,7 +467,7 @@ export default class SpriteFrame extends Asset {
      *     spriteFrame.ensureLoadTexture();
      * }
      */
-    ensureLoadTexture () {
+    ensureLoadTexture() {
         if (this._texture) {
             if (!this._texture.loaded) {
                 // load exists texture
@@ -489,11 +494,11 @@ export default class SpriteFrame extends Asset {
      * spriteFrame.once('load', onSpriteFrameLoaded);
      * spriteFrame.ensureLoadTexture();
      */
-    clearTexture () {
+    clearTexture() {
         this._texture = null;   // TODO - release texture
     }
 
-    _checkRect (texture) {
+    _checkRect(texture) {
         let rect = this._rect;
         let maxX = rect.x, maxY = rect.y;
         if (this._rotated) {
@@ -512,7 +517,7 @@ export default class SpriteFrame extends Asset {
         }
     }
 
-    _calculateSlicedUV () {
+    _calculateSlicedUV() {
         let rect = this._rect;
         let atlasWidth = this._texture.width;
         let atlasHeight = this._texture.height;
@@ -569,7 +574,7 @@ export default class SpriteFrame extends Asset {
         }
     }
 
-    _calculateUV () {
+    _calculateUV() {
         let rect = this._rect,
             texture = this._texture,
             uv = this.uv,
@@ -610,8 +615,8 @@ export default class SpriteFrame extends Asset {
             vertices.nu.length = 0;
             vertices.nv.length = 0;
             for (let i = 0; i < vertices.u.length; i++) {
-                vertices.nu[i] = vertices.u[i]/texw;
-                vertices.nv[i] = vertices.v[i]/texh;
+                vertices.nu[i] = vertices.u[i] / texw;
+                vertices.nv[i] = vertices.v[i] / texh;
             }
         }
 
@@ -620,7 +625,7 @@ export default class SpriteFrame extends Asset {
 
     // SERIALIZATION
 
-    _serialize (exporting) {
+    _serialize(exporting) {
         let rect = this._rect;
         let offset = this._offset;
         let size = this._originalSize;
@@ -663,7 +668,7 @@ export default class SpriteFrame extends Asset {
         };
     }
 
-    _deserialize (data, handle) {
+    _deserialize(data, handle) {
         let rect = data.rect;
         if (rect) {
             this.setRect(new cc.Rect(rect[0], rect[1], rect[2], rect[3]));
