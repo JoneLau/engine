@@ -25,13 +25,14 @@ export default class RenderData extends BaseRenderData {
         let data = this._data;
         if (data.length !== length) {
             // // Free extra data
-            let value = data.length === 0 ? 0 : data.length - 1;
+            let value = data.length;
             let i = 0;
             for (i = value; i < length; i++) {
                 data[i] = _dataPool.add();
             }
             for (i = value; i > length; i--) {
                 _dataPool.remove(i);
+                data.splice(i, 1);
             }
         }
     }
@@ -49,21 +50,21 @@ export default class RenderData extends BaseRenderData {
         }
     }
 
-    free(data) {
-        if (data instanceof RenderData) {
-            for (let i = data.length - 1; i > 0; i--) {
-                data._data[i] = _dataPool.add();
-            }
-            data._data.length = 0;
-            data._indices.length = 0;
-            data.material = null;
-            data.uvDirty = true;
-            data.vertDirty = true;
-            data.vertexCount = 0;
-            data.indiceCount = 0;
-            _pool.add(data);
-        }
-    };
+    // free(data) {
+    //     if (data instanceof RenderData) {
+    //         for (let i = data.length - 1; i > 0; i--) {
+    //             data._data[i] = _dataPool.add();
+    //         }
+    //         data._data.length = 0;
+    //         data._indices.length = 0;
+    //         data.material = null;
+    //         data.uvDirty = true;
+    //         data.vertDirty = true;
+    //         data.vertexCount = 0;
+    //         data.indiceCount = 0;
+    //         _pool.add(data);
+    //     }
+    // };
 
     clear() {
         this._data.length = 0;

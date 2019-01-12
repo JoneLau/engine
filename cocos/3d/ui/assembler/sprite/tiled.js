@@ -1,7 +1,7 @@
 /****************************************************************************
  Copyright (c) 2017-2018 Xiamen Yaji Software Co., Ltd.
 
- https://www.cocos.com/
+ http://www.cocos.com
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated engine source code (the "Software"), a limited,
@@ -23,45 +23,22 @@
  THE SOFTWARE.
  ****************************************************************************/
 
-// const js = require('../../../../../platform/js');
-// const assembler = require('../2d/tiled');
-// const vec3 = cc.vmath.vec3;
-import * as js from '../../../core/utils/js';
-import { vec3, mat4 } from '../../../core/vmath/index';
-import RenderData from '../../../3d/ui/renderData';
+// const dynamicAtlasManager = require('../../../utils/dynamic-atlas/manager');
+import { vec3 } from '../../../../core/vmath/index';
 
-let vec3_temps = [];
-for (let i = 0; i < 4; i++) {
-    vec3_temps.push(vec3.create());
-}
+let tilled = {
+    useModel: false,
 
-let matrix = mat4.create();
+    vertexOffset: 6,
+    uvOffset: 3,
+    colorOffset: 5,
 
-export default class Tiled {
-    static type = 'tiled';
+    createData(sprite) {
+        return sprite.requestRenderData();
+    },
 
-    static vertexOffset = 6;
-    static uvOffset = 3;
-    static colorOffset = 5;
-
-    static createData(comp) {
-        let renderData = RenderData.add();
-        comp._renderData = renderData.data;
-        comp._renderDataPoolID = renderData.pooID;
-        renderData = comp._renderData;
-        return renderData;
-    }
-
-    static removeData(comp) {
-        if (comp._renderData) {
-            RenderData.remove(comp._renderDataPoolID);
-            comp._renderDataPoolID = -1;
-            comp._renderData = null;
-        }
-    }
-
-    static updateRenderData(comp) {
-        let frame = comp.spriteFrame;
+    updateRenderData(sprite) {
+        let frame = sprite.spriteFrame;
 
         // TODO: Material API design and export from editor could affect the material activation process
         // need to update the logic here
@@ -74,18 +51,19 @@ export default class Tiled {
         //     }
         // }
 
-        let renderData = comp._renderData;
+        let renderData = sprite._renderData;
         if (!frame || !renderData ||
             !(renderData.uvDirty || renderData.vertDirty))
             return;
 
-        let /*node = comp.node,*/
-            // contentWidth = Math.abs(comp.width),
-            // contentHeight = Math.abs(comp.height),
-            contentWidth = Math.abs(comp.size.width),
-            contentHeight = Math.abs(comp.size.height),
-            appx = comp.anchor.x * contentWidth,
-            appy = comp.anchor.y * contentHeight;
+        let node = sprite.node,
+            // contentWidth = Math.abs(node.width),
+            // contentHeight = Math.abs(node.height),
+            contentWidth = Math.abs(node.width),
+            contentHeight = Math.abs(node.height),
+            appx = node.anchorX * contentWidth,
+            appy = node.anchorY * contentHeight;
+        node._updateWorldMatrix();
 
         let rect = frame._rect,
             rectWidth = rect.width,
@@ -110,44 +88,16 @@ export default class Tiled {
         renderData.indiceCount = row * col * 6;
         renderData.uvDirty = false;
         renderData.vertDirty = false;
-    }
+    },
 
-    static fillVertices(vbuf, vertexOffset, matrix, row, col, data) {
-        let x, x1, y, y1;
-        for (let yindex = 0, ylength = row; yindex < ylength; ++yindex) {
-            y = data[yindex].y;
-            y1 = data[yindex + 1].y;
-            for (let xindex = 0, xlength = col; xindex < xlength; ++xindex) {
-                x = data[xindex].x;
-                x1 = data[xindex + 1].x;
-
-                vec3.set(vec3_temps[0], x, y, 0);
-                vec3.set(vec3_temps[1], x1, y, 0);
-                vec3.set(vec3_temps[2], x, y1, 0);
-                vec3.set(vec3_temps[3], x1, y1, 0);
-
-                for (let i = 0; i < 4; i++) {
-                    let vec3_temp = vec3_temps[i];
-                    vec3.transformMat4(vec3_temp, vec3_temp, matrix);
-                    let offset = i * 6;
-                    vbuf[vertexOffset + offset] = vec3_temp.x;
-                    vbuf[vertexOffset + offset + 1] = vec3_temp.y;
-                    vbuf[vertexOffset + offset + 2] = vec3_temp.z;
-                }
-
-                vertexOffset += 24;
-            }
-        }
-    }
-
-    static fillBuffers(comp, buffer) {
-        let node = comp.node,
-            color = comp._color._val,
-            renderData = comp._renderData,
+    fillBuffers(sprite, /*renderer*/buffer) {
+        let node = sprite.node,
+            color = sprite._color._val,
+            renderData = sprite._renderData,
             data = renderData._data;
 
         // buffer
-        let /*buffer = renderer._buffer,*/
+        let /*buffer = is3DNode ? renderer._meshBuffer3D : renderer._meshBuffer,*/
             vertexOffset = buffer.byteOffset >> 2,
             indiceOffset = buffer.indiceOffset,
             vertexId = buffer.vertexOffset;
@@ -159,19 +109,17 @@ export default class Tiled {
             uintbuf = buffer._uintVData,
             ibuf = buffer._iData;
 
-        let rotated = comp.spriteFrame._rotated;
-        let uv = comp.spriteFrame.uv;
-        let rect = comp.spriteFrame._rect;
-        // let contentWidth = Math.abs(comp.width);
-        // let contentHeight = Math.abs(comp.height);
-        let contentWidth = Math.abs(comp.size.width);
-        let contentHeight = Math.abs(comp.size.height);
+        let rotated = sprite.spriteFrame._rotated;
+        let uv = sprite.spriteFrame.uv;
+        let rect = sprite.spriteFrame._rect;
+        let contentWidth = Math.abs(node.width);
+        let contentHeight = Math.abs(node.height);
         let hRepeat = contentWidth / rect.width;
         let vRepeat = contentHeight / rect.height;
         let row = Math.ceil(vRepeat),
             col = Math.ceil(hRepeat);
 
-        node.getWorldMatrix(matrix);
+        let matrix = node._worldMatrix;
 
         this.fillVertices(vbuf, vertexOffset, matrix, row, col, data);
 
@@ -234,6 +182,41 @@ export default class Tiled {
             ibuf[indiceOffset++] = vertexId + 2;
             vertexId += 4;
         }
-    }
-}
+    },
 
+    fillVertices: (function () {
+        let vec3_temps = [];
+        for (let i = 0; i < 4; i++) {
+            vec3_temps.push(vec3.create());
+        }
+        return function (vbuf, vertexOffset, matrix, row, col, data) {
+            let x, x1, y, y1;
+            for (let yindex = 0, ylength = row; yindex < ylength; ++yindex) {
+                y = data[yindex].y;
+                y1 = data[yindex + 1].y;
+                for (let xindex = 0, xlength = col; xindex < xlength; ++xindex) {
+                    x = data[xindex].x;
+                    x1 = data[xindex + 1].x;
+
+                    vec3.set(vec3_temps[0], x, y, 0);
+                    vec3.set(vec3_temps[1], x1, y, 0);
+                    vec3.set(vec3_temps[2], x, y1, 0);
+                    vec3.set(vec3_temps[3], x1, y1, 0);
+
+                    for (let i = 0; i < 4; i++) {
+                        let vec3_temp = vec3_temps[i];
+                        vec3.transformMat4(vec3_temp, vec3_temp, matrix);
+                        let offset = i * 6;
+                        vbuf[vertexOffset + offset] = vec3_temp.x;
+                        vbuf[vertexOffset + offset + 1] = vec3_temp.y;
+                        vbuf[vertexOffset + offset + 2] = vec3_temp.z;
+                    }
+
+                    vertexOffset += 24;
+                }
+            }
+        };
+    })(),
+};
+
+export default tilled;

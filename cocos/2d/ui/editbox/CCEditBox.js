@@ -24,21 +24,25 @@
  THE SOFTWARE.
  ****************************************************************************/
 
-const macro = require('../../platform/CCMacro');
-const EditBoxImpl = require('../editbox/CCEditBoxImpl');
-const Label = require('../CCLabel');
-const Types = require('./types');
+import { ccclass, menu, executionOrder, executeInEditMode, property } from '../../../core/data/class-decorator';
+import Component from '../../../components/CCComponent';
+import Color from '../../../core/value-types/color';
+import macro from '../../../core/platform/CCMacro';
+import EditBoxImpl from './CCEditBoxImpl';
+import LabelComponent from './../../../3d/ui/CCLabel';
+// import { InputMode, InputFlag, KeyboardReturnType } from './types';
+import * as Types from './types';
 const InputMode = Types.InputMode;
 const InputFlag = Types.InputFlag;
 const KeyboardReturnType = Types.KeyboardReturnType;
 
 const LEFT_PADDING = 2;
 
-function capitalize (string) {
-    return string.replace(/(?:^|\s)\S/g, function(a) { return a.toUpperCase(); });
+function capitalize(string) {
+    return string.replace(/(?:^|\s)\S/g, function (a) { return a.toUpperCase(); });
 }
 
-function capitalizeFirstLetter (string) {
+function capitalizeFirstLetter(string) {
     return string.charAt(0).toUpperCase() + string.slice(1);
 }
 
@@ -49,344 +53,478 @@ function capitalizeFirstLetter (string) {
  * @class EditBox
  * @extends Component
  */
-let EditBox = cc.Class({
-    name: 'cc.EditBox',
-    extends: cc.Component,
 
-    editor: CC_EDITOR && {
-        menu: 'i18n:MAIN_MENU.component.ui/EditBox',
-        inspector: 'packages://inspector/inspectors/comps/cceditbox.js',
-        help: 'i18n:COMPONENT.help_url.editbox',
-        executeInEditMode: true,
-    },
+@ccclass('cc.EditBoxComponent')
+@executionOrder(100)
+@menu('UI/EditBox')
+@executeInEditMode
+export default class EditBoxComponent extends Component {
+    @property
+    _useOriginalSize = true;
+    @property
+    _string = '';
+    @property
+    _tabIndex = 0;
+    @property
+    _backgroundImage = null;
+    @property
+    _returnType = KeyboardReturnType.DEFAULT;
+    @property
+    _inputFlag = InputFlag.DEFAULT;
+    @property
+    _inputMode = InputMode.SINGLE_LINE;
+    @property
+    _fontSize = 20;
+    @property
+    _lineHeight = 40;
+    @property
+    _maxLength = 20;
+    @property
+    _fontColor = Color.WHITE;
+    @property
+    _placeholder = 'Enter text here...';
+    @property
+    _placeholderFontSize = 20;
+    @property
+    _placeholderFontColor = Color.GRAY;
+    @property
+    _stayOnTop = false;
+    @property
+    _editingDidBegan = [];
+    @property
+    _editingDidEnded = [];
+    @property
+    _editingReturn = [];
+    @property
+    _textChanged = [];
 
-    properties: {
-        _useOriginalSize: true,
-        _string: '',
-        /**
-         * !#en Input string of EditBox.
-         * !#zh 输入框的初始输入内容，如果为空则会显示占位符的文本。
-         * @property {String} string
-         */
-        string: {
-            tooltip: CC_DEV && 'i18n:COMPONENT.editbox.string',
-            get () {
-                return this._string;
-            },
-            set(value) {
-                if (this.maxLength >= 0 && value.length >= this.maxLength) {
-                    value = value.slice(0, this.maxLength);
-                }
+    /**
+     * !#en Input string of EditBox.
+     * !#zh 输入框的初始输入内容，如果为空则会显示占位符的文本。
+     * @property {String} string
+     */
+    @property
+    get string() {
+        return this._string;
+    }
 
-                this._string = value;
-                if (this._impl) {
-                    this._updateString(value);
-                }
-            }
-        },
-
-        /**
-         * !#en The background image of EditBox.
-         * !#zh 输入框的背景图片
-         * @property {SpriteFrame} backgroundImage
-         */
-        backgroundImage: {
-            tooltip: CC_DEV && 'i18n:COMPONENT.editbox.backgroundImage',
-            default: null,
-            type: cc.SpriteFrame,
-            notify () {
-                this._createBackgroundSprite();
-            }
-        },
-
-        /**
-         * !#en
-         * The return key type of EditBox.
-         * Note: it is meaningless for web platforms and desktop platforms.
-         * !#zh
-         * 指定移动设备上面回车按钮的样式。
-         * 注意：这个选项对 web 平台与 desktop 平台无效。
-         * @property {EditBox.KeyboardReturnType} returnType
-         * @default KeyboardReturnType.DEFAULT
-         */
-        returnType: {
-            default: KeyboardReturnType.DEFAULT,
-            tooltip: CC_DEV && 'i18n:COMPONENT.editbox.returnType',
-            displayName: 'KeyboardReturnType',
-            type: KeyboardReturnType,
-            notify () {
-                if (this._impl) {
-                    this._impl.returnType = this.returnType;
-                }
-            }
-        },
-
-        /**
-         * !#en Set the input flags that are to be applied to the EditBox.
-         * !#zh 指定输入标志位，可以指定输入方式为密码或者单词首字母大写。
-         * @property {EditBox.InputFlag} inputFlag
-         * @default InputFlag.DEFAULT
-         */
-        inputFlag: {
-            tooltip: CC_DEV && 'i18n:COMPONENT.editbox.input_flag',
-            default: InputFlag.DEFAULT,
-            type: InputFlag,
-            notify () {
-                if (this._impl) {
-                    this._impl.setInputFlag(this.inputFlag);
-                    this._updateString(this._string);
-                }
-            }
-        },
-        /**
-         * !#en
-         * Set the input mode of the edit box.
-         * If you pass ANY, it will create a multiline EditBox.
-         * !#zh
-         * 指定输入模式: ANY表示多行输入，其它都是单行输入，移动平台上还可以指定键盘样式。
-         * @property {EditBox.InputMode} inputMode
-         * @default InputMode.ANY
-         */
-        inputMode: {
-            tooltip: CC_DEV && 'i18n:COMPONENT.editbox.input_mode',
-            default: InputMode.ANY,
-            type: InputMode,
-            notify () {
-                if (this._impl) {
-                    this._impl.setInputMode(this.inputMode);
-                }
-            }
-        },
-
-        /**
-         * !#en Font size of the input text.
-         * !#zh 输入框文本的字体大小
-         * @property {Number} fontSize
-         */
-        fontSize: {
-            tooltip: CC_DEV && 'i18n:COMPONENT.editbox.font_size',
-            default: 20,
-            notify () {
-                if (this._textLabel) {
-                    this._textLabel.fontSize = this.fontSize;
-                }
-                if (this._impl) {
-                    this._impl.setFontSize(this.fontSize);
-                }
-            }
-        },
-
-        /**
-         * !#en Change the lineHeight of displayed text.
-         * !#zh 输入框文本的行高。
-         * @property {Number} lineHeight
-         */
-        lineHeight: {
-            tooltip: CC_DEV && 'i18n:COMPONENT.editbox.line_height',
-            default: 40,
-            notify () {
-                if (this._textLabel) {
-                    this._textLabel.lineHeight = this.lineHeight;
-                }
-            }
-        },
-
-        /**
-         * !#en Font color of the input text.
-         * !#zh 输入框文本的颜色。
-         * @property {Color} fontColor
-         */
-        fontColor: {
-            tooltip: CC_DEV && 'i18n:COMPONENT.editbox.font_color',
-            default: cc.Color.WHITE,
-            notify () {
-                if (this._textLabel) {
-                    this._textLabel.node.opacity = this.fontColor.a;
-                    this._textLabel.node.color = this.fontColor;
-                }
-                if (this._impl) {
-                    this._impl.setFontColor(this.fontColor);
-                }
-            }
-        },
-
-        /**
-         * !#en The display text of placeholder.
-         * !#zh 输入框占位符的文本内容。
-         * @property {String} placeholder
-         */
-        placeholder: {
-            tooltip: CC_DEV && 'i18n:COMPONENT.editbox.placeholder',
-            default: 'Enter text here...',
-            notify () {
-                if (this._placeholderLabel) {
-                    this._placeholderLabel.string = this.placeholder;
-                }
-                if (this._impl) {
-                    this._impl.setPlaceholderText(this.placeholder);
-                }
-            }
-        },
-
-        /**
-         * !#en The font size of placeholder.
-         * !#zh 输入框占位符的字体大小。
-         * @property {Number} placeholderFontSize
-         */
-        placeholderFontSize: {
-            tooltip: CC_DEV && 'i18n:COMPONENT.editbox.placeholder_font_size',
-            default: 20,
-            notify () {
-                if (this._placeholderLabel) {
-                    this._placeholderLabel.fontSize = this.placeholderFontSize;
-                }
-            }
-        },
-
-        /**
-         * !#en The font color of placeholder.
-         * !#zh 输入框占位符的字体颜色。
-         * @property {Color} placeholderFontColor
-         */
-        placeholderFontColor: {
-            tooltip: CC_DEV && 'i18n:COMPONENT.editbox.placeholder_font_color',
-            default: cc.Color.GRAY,
-            notify () {
-                if (this._placeholderLabel) {
-                    this._placeholderLabel.node.color = this.placeholderFontColor;
-                    this._placeholderLabel.node.opacity = this.placeholderFontColor.a;
-                }
-            }
-        },
-
-        /**
-         * !#en The maximize input length of EditBox.
-         * - If pass a value less than 0, it won't limit the input number of characters.
-         * - If pass 0, it doesn't allow input any characters.
-         * !#zh 输入框最大允许输入的字符个数。
-         * - 如果值为小于 0 的值，则不会限制输入字符个数。
-         * - 如果值为 0，则不允许用户进行任何输入。
-         * @property {Number} maxLength
-         */
-        maxLength: {
-            tooltip: CC_DEV && 'i18n:COMPONENT.editbox.max_length',
-            default: 20,
-            notify () {
-                if (this._impl) {
-                    this._impl.setMaxLength(this.maxLength);
-                }
-            }
-        },
-
-        /**
-         * !#en The input is always visible and be on top of the game view (only useful on Web).
-         * !zh 输入框总是可见，并且永远在游戏视图的上面（这个属性只有在 Web 上面修改有意义）
-         * Note: only available on Web at the moment.
-         * @property {Boolean} stayOnTop
-         */
-        stayOnTop: {
-            tooltip: CC_DEV && 'i18n:COMPONENT.editbox.stay_on_top',
-            default: false,
-            notify () {
-                if (this._impl) {
-                    this._updateStayOnTop();
-                }
-            }
-        },
-
-        _tabIndex: 0,
-
-        /**
-         * !#en Set the tabIndex of the DOM input element (only useful on Web).
-         * !#zh 修改 DOM 输入元素的 tabIndex（这个属性只有在 Web 上面修改有意义）。
-         * @property {Number} tabIndex
-         */
-        tabIndex: {
-            tooltip: CC_DEV && 'i18n:COMPONENT.editbox.tab_index',
-            get () {
-                return this._tabIndex;
-            },
-            set (value) {
-                this._tabIndex = value;
-                if (this._impl) {
-                    this._impl.setTabIndex(value);
-                }
-            }
-        },
-
-        /**
-         * !#en The event handler to be called when EditBox began to edit text.
-         * !#zh 开始编辑文本输入框触发的事件回调。
-         * @property {Component.EventHandler[]} editingDidBegan
-         */
-        editingDidBegan: {
-            default: [],
-            type: cc.Component.EventHandler,
-        },
-
-        /**
-         * !#en The event handler to be called when EditBox text changes.
-         * !#zh 编辑文本输入框时触发的事件回调。
-         * @property {Component.EventHandler[]} textChanged
-         */
-        textChanged: {
-            default: [],
-            type: cc.Component.EventHandler,
-        },
-
-        /**
-         * !#en The event handler to be called when EditBox edit ends.
-         * !#zh 结束编辑文本输入框时触发的事件回调。
-         * @property {Component.EventHandler[]} editingDidEnded
-         */
-        editingDidEnded: {
-            default: [],
-            type: cc.Component.EventHandler,
-        },
-
-        /**
-         * !#en The event handler to be called when return key is pressed. Windows is not supported.
-         * !#zh 当用户按下回车按键时的事件回调，目前不支持 windows 平台
-         * @property {Component.EventHandler[]} editingReturn
-         */
-        editingReturn: {
-            default: [],
-            type: cc.Component.EventHandler
+    set string(value) {
+        if (this._maxLength >= 0 && value.length >= this._maxLength) {
+            value = value.slice(0, this._maxLength);
         }
 
-    },
+        this._string = value;
+        if (this._impl) {
+            this._updateString(value);
+        }
+    }
 
-    statics: {
-        _EditBoxImpl: EditBoxImpl,
-        KeyboardReturnType: KeyboardReturnType,
-        InputFlag: InputFlag,
-        InputMode: InputMode
-    },
+    /**
+     * !#en The background image of EditBox.
+     * !#zh 输入框的背景图片
+     * @property {SpriteFrame} backgroundImage
+     */
+    @property({
+        type: cc.SpriteFrame
+    })
+    get backgroundImage() {
+        return this._backgroundImage;
+    }
 
-    _init () {
+    set backgroundImage(value) {
+        if (this._backgroundImage === value) {
+            return;
+        }
+
+        this._backgroundImage = value;
+        this._createBackgroundSprite();
+    }
+
+    /**
+     * !#en
+     * The return key type of EditBox.
+     * Note: it is meaningless for web platforms and desktop platforms.
+     * !#zh
+     * 指定移动设备上面回车按钮的样式。
+     * 注意：这个选项对 web 平台与 desktop 平台无效。
+     * @property {EditBox.KeyboardReturnType} returnType
+     * @default KeyboardReturnType.DEFAULT
+     */
+    @property({
+        type: KeyboardReturnType
+    })
+    get returnType() {
+        return this._returnType;
+    }
+
+    set returnType(value) {
+        this._returnType = value;
+        if (this._impl) {
+            this._impl.returnType = this._returnType;
+        }
+    }
+
+
+    /**
+     * !#en Set the input flags that are to be applied to the EditBox.
+     * !#zh 指定输入标志位，可以指定输入方式为密码或者单词首字母大写。
+     * @property {EditBox.InputFlag} inputFlag
+     * @default InputFlag.DEFAULT
+     */
+    @property({
+        type: InputFlag
+    })
+    get inputFlag() {
+        return this._inputFlag;
+    }
+
+    set inputFlag(value) {
+        this._inputFlag = value;
+        if (this._impl) {
+            this._impl.setInputFlag(this._inputFlag);
+            this._updateString(this._string);
+        }
+    }
+    /**
+     * !#en
+     * Set the input mode of the edit box.
+     * If you pass ANY, it will create a multiline EditBox.
+     * !#zh
+     * 指定输入模式: ANY表示多行输入，其它都是单行输入，移动平台上还可以指定键盘样式。
+     * @property {EditBox.InputMode} inputMode
+     * @default InputMode.ANY
+     */
+    @property({
+        type: InputMode
+    })
+    get inputMode() {
+        return this._inputMode;
+    }
+
+    set inputMode(value) {
+        this._inputMode = value;
+        if (this._impl) {
+            this._impl.setInputMode(this._inputMode);
+        }
+    }
+
+    /**
+     * !#en Font size of the input text.
+     * !#zh 输入框文本的字体大小
+     * @property {Number} fontSize
+     */
+    @property
+    get fontSize() {
+        return this._fontSize;
+    }
+
+    set fontSize(value) {
+        if (this._fontSize === value) {
+            return;
+        }
+
+        this._fontSize = value;
+        if (this._textLabel) {
+            this._textLabel.fontSize = this._fontSize;
+        }
+        if (this._impl) {
+            this._impl.setFontSize(this._fontSize);
+        }
+    }
+
+
+    /**
+     * !#en Change the lineHeight of displayed text.
+     * !#zh 输入框文本的行高。
+     * @property {Number} lineHeight
+     */
+    @property
+    get lineHeight() {
+        return this._lineHeight;
+    }
+
+    set lineHeight(value) {
+        if (this._lineHeight === value) {
+            return;
+        }
+
+        this._lineHeight = value;
+        if (this._textLabel) {
+            this._textLabel.lineHeight = this._lineHeight;
+        }
+    }
+
+
+    /**
+     * !#en Font color of the input text.
+     * !#zh 输入框文本的颜色。
+     * @property {Color} fontColor
+     */
+    @property({
+        type: Color
+    })
+    get fontColor() {
+        return this._fontColor;
+    }
+
+    set fontColor(value) {
+        if (this._fontColor === value) {
+            return
+        }
+
+        this._fontColor = value;
+        if (this._textLabel) {
+            this._textLabel.node.opacity = this._fontColor.a;
+            this._textLabel.node.color = this._fontColor;
+        }
+        if (this._impl) {
+            this._impl.setFontColor(this._fontColor);
+        }
+    }
+
+    /**
+     * !#en The display text of placeholder.
+     * !#zh 输入框占位符的文本内容。
+     * @property {String} placeholder
+     */
+    @property
+    get placeholder() {
+        return this._placeholder;
+    }
+
+    set placeholder(value) {
+        if (this._placeholder === value) {
+            return;
+        }
+
+        this._placeholder = value;
+        if (this._placeholderLabel) {
+            this._placeholderLabel.string = this._placeholder;
+        }
+        if (this._impl) {
+            this._impl.setPlaceholderText(this._placeholder);
+        }
+    }
+
+    /**
+     * !#en The font size of placeholder.
+     * !#zh 输入框占位符的字体大小。
+     * @property {Number} placeholderFontSize
+     */
+    @property
+    get placeholderFontSize() {
+        return this._placeholderFontSize;
+    }
+
+    set placeholderFontSize(value) {
+        if (this._placeholderFontSize === value) {
+            return;
+        }
+
+        this._placeholderFontSize = value;
+        if (this._placeholderLabel) {
+            this._placeholderLabel.fontSize = this._placeholderFontSize;
+        }
+    }
+
+    /**
+     * !#en The font color of placeholder.
+     * !#zh 输入框占位符的字体颜色。
+     * @property {Color} placeholderFontColor
+     */
+    @property
+    get placeholderFontColor() {
+        return this._placeholderFontColor;
+    }
+
+    set placeholderFontColor(value) {
+        if (this._placeholderFontColor === value) {
+            return;
+        }
+
+        this._placeholderFontColor = value;
+        if (this._placeholderLabel) {
+            this._placeholderLabel.node.color = this._placeholderFontColor;
+            this._placeholderLabel.node.opacity = this._placeholderFontColor.a;
+        }
+    }
+
+    /**
+     * !#en The maximize input length of EditBox.
+     * - If pass a value less than 0, it won't limit the input number of characters.
+     * - If pass 0, it doesn't allow input any characters.
+     * !#zh 输入框最大允许输入的字符个数。
+     * - 如果值为小于 0 的值，则不会限制输入字符个数。
+     * - 如果值为 0，则不允许用户进行任何输入。
+     * @property {Number} maxLength
+     */
+    @property
+    get maxLength() {
+        return this._maxLength;
+    }
+    set maxLength(value) {
+        if (this._maxLength === value) {
+            return
+        }
+
+        this._maxLength = value;
+        if (this._impl) {
+            this._impl.setMaxLength(this._maxLength);
+        }
+    }
+
+    /**
+     * !#en The input is always visible and be on top of the game view (only useful on Web).
+     * !zh 输入框总是可见，并且永远在游戏视图的上面（这个属性只有在 Web 上面修改有意义）
+     * Note: only available on Web at the moment.
+     * @property {Boolean} stayOnTop
+     */
+    @property
+    get stayOnTop() {
+        return this._stayOnTop;
+    }
+
+    set stayOnTop(value) {
+        this._stayOnTop = value;
+        if (this._impl) {
+            this._updateStayOnTop();
+        }
+    }
+
+    /**
+     * !#en Set the tabIndex of the DOM input element (only useful on Web).
+     * !#zh 修改 DOM 输入元素的 tabIndex（这个属性只有在 Web 上面修改有意义）。
+     * @property {Number} tabIndex
+     */
+    @property
+    get tabIndex() {
+        return this._tabIndex;
+    }
+
+    set tabIndex(value) {
+        this._tabIndex = value;
+        if (this._impl) {
+            this._impl.setTabIndex(value);
+        }
+    }
+
+    /**
+     * !#en The event handler to be called when EditBox began to edit text.
+     * !#zh 开始编辑文本输入框触发的事件回调。
+     * @property {Component.EventHandler[]} editingDidBegan
+     */
+    @property({
+        type: [cc.Component.EventHandler]
+    })
+    get editingDidBegan() {
+        return this._editingDidBegan;
+    }
+
+    set editingDidBegan(value) {
+        this._editingDidBegan = value;
+    }
+
+    /**
+     * !#en The event handler to be called when EditBox text changes.
+     * !#zh 编辑文本输入框时触发的事件回调。
+     * @property {Component.EventHandler[]} textChanged
+     */
+    @property({
+        type: [cc.Component.EventHandler]
+    })
+    get textChanged() {
+        return this._textChanged;
+    }
+
+    set textChanged(value) {
+        this._textChanged = value;
+    }
+
+    /**
+     * !#en The event handler to be called when EditBox edit ends.
+     * !#zh 结束编辑文本输入框时触发的事件回调。
+     * @property {Component.EventHandler[]} editingDidEnded
+     */
+    @property({
+        type: [cc.Component.EventHandler]
+    })
+    get editingDidEnded() {
+        return this._editingDidEnded;
+    }
+
+    set editingDidEnded(value) {
+        this._editingDidEnded = value;
+    }
+
+    /**
+     * !#en The event handler to be called when return key is pressed. Windows is not supported.
+     * !#zh 当用户按下回车按键时的事件回调，目前不支持 windows 平台
+     * @property {Component.EventHandler[]} editingReturn
+     */
+    @property({
+        type: [cc.Component.EventHandler]
+    })
+    get editingReturn() {
+        return this._editingReturn;
+    }
+
+    set editingReturn(value) {
+        this._editingReturn = value;
+    }
+
+    static _EditBoxImpl = EditBoxImpl;
+    static KeyboardReturnType = KeyboardReturnType;
+    static InputFlag = InputFlag;
+    static InputMode = InputMode;
+
+    onEnable() {
+        this._impl && this._impl.onEnable();
+    }
+
+    onDisable() {
+        this._impl && this._impl.onDisable();
+    }
+
+    onDestroy() {
+        this._impl.clear();
+    }
+
+    _init() {
         this._createBackgroundSprite();
         this._createLabels();
-        this.node.on(cc.Node.EventType.SIZE_CHANGED, this._resizeChildNodes, this);
+        this.node.on(cc.NodeUI.EventType.SIZE_CHANGED, this._resizeChildNodes, this);
 
         let impl = this._impl = new EditBoxImpl();
 
         impl.setDelegate(this);
         impl.setNode(this.node);
-        impl.setInputMode(this.inputMode);
-        impl.setMaxLength(this.maxLength);
-        impl.setInputFlag(this.inputFlag);
-        impl.setReturnType(this.returnType);
-        impl.setTabIndex(this.tabIndex);
-        impl.setFontColor(this.fontColor);
-        impl.setFontSize(this.fontSize);
-        impl.setPlaceholderText(this.placeholder);
+        impl.setInputMode(this._inputMode);
+        impl.setMaxLength(this._maxLength);
+        impl.setInputFlag(this._inputFlag);
+        impl.setReturnType(this._returnType);
+        impl.setTabIndex(this._tabIndex);
+        impl.setFontColor(this._fontColor);
+        impl.setFontSize(this._fontSize);
+        impl.setPlaceholderText(this._placeholder);
 
         this._updateStayOnTop();
-        this._updateString(this.string);
+        this._updateString(this._string);
         this._syncSize();
-    },
+    }
 
-    _updateStayOnTop () {
+    __preload() {
+        if (!CC_EDITOR) {
+            this._registerEvent();
+        }
+        this._init();
+    }
+
+    _registerEvent() {
+        this.node.on(cc.NodeUI.EventType.TOUCH_START, this._onTouchBegan, this);
+        this.node.on(cc.NodeUI.EventType.TOUCH_END, this._onTouchEnded, this);
+    }
+
+    _updateStayOnTop() {
         if (this.stayOnTop) {
             this._hideLabels();
         }
@@ -394,19 +532,19 @@ let EditBox = cc.Class({
             this._showLabels();
         }
         this._impl.stayOnTop(this.stayOnTop);
-    },
+    }
 
-    _syncSize () {
+    _syncSize() {
         let size = this.node.getContentSize();
-        
+
         this._background.node.setAnchorPoint(this.node.getAnchorPoint());
         this._background.node.setContentSize(size);
 
         this._updateLabelPosition(size);
         this._impl.setSize(size.width, size.height);
-    },
+    }
 
-    _updateLabelPosition (size) {
+    _updateLabelPosition(size) {
         let node = this.node;
         let offx = -node.anchorX * node.width;
         let offy = -node.anchorY * node.height;
@@ -421,7 +559,7 @@ let EditBox = cc.Class({
         placeholderLabel.node.setPosition(offx + LEFT_PADDING, offy + size.height);
         textLabel.node.setPosition(offx + LEFT_PADDING, offy + size.height);
 
-        if (this.inputMode === InputMode.ANY){
+        if (this._inputMode === InputMode.ANY) {
             placeholderLabel.verticalAlign = macro.VerticalTextAlignment.TOP;
             placeholderLabel.enableWrapText = true;
             textLabel.verticalAlign = macro.VerticalTextAlignment.TOP;
@@ -433,44 +571,53 @@ let EditBox = cc.Class({
             textLabel.verticalAlign = macro.VerticalTextAlignment.CENTER;
             textLabel.enableWrapText = false;
         }
-    },
+    }
 
-    _createBackgroundSprite () {
-        let background = this._background;
-        if (!background) {
-            let node = this.node.getChildByName('BACKGROUND_SPRITE');
-            if (!node) {
-                node = new cc.Node('BACKGROUND_SPRITE');
+    _createBackgroundSprite() {
+        if (!this._background) {
+            this._background = this.node.getComponent(cc.SpriteComponent);
+            if (!this._background) {
+                this._background = this.node.addComponent(cc.SpriteComponent);
             }
-            
-            background = node.getComponent(cc.Sprite);
-            if (!background) {
-                background = node.addComponent(cc.Sprite);
-            }
-            background.type = cc.Sprite.Type.SLICED;
-
-            node.parent = this.node;
-            this._background = background;
+            this._background.type = cc.SpriteComponent.Type.SLICED;
         }
-        background.spriteFrame = this.backgroundImage;
-    },
 
-    _createLabels () {
+        this._background.spriteFrame = this._backgroundImage;
+        // let background = this._background;
+        // if (!background) {
+        //     let node = this.node.getChildByName('BACKGROUND_SPRITE');
+        //     if (!node) {
+        //         node = new cc.NodeUI('BACKGROUND_SPRITE');
+        //     }
+
+        //     background = node.getComponent(cc.SpriteComponent);
+        //     if (!background) {
+        //         background = node.addComponent(cc.SpriteComponent);
+        //     }
+        //     background.type = cc.SpriteComponent.Type.SLICED;
+
+        //     node.parent = this.node;
+        //     this._background = background;
+        // }
+        // background.spriteFrame = this._backgroundImage;
+    }
+
+    _createLabels() {
         if (!this._textLabel) {
             let node = this.node.getChildByName('TEXT_LABEL');
             if (!node) {
-                node = new cc.Node('TEXT_LABEL');
+                node = new cc.NodeUI('TEXT_LABEL');
             }
-            node.color = this.fontColor;
+            node.color = this._fontColor;
             node.parent = this.node;
             node.setAnchorPoint(0, 1);
 
-            let textLabel = node.getComponent(Label);
+            let textLabel = node.getComponent(LabelComponent);
             if (!textLabel) {
-                textLabel = node.addComponent(Label);
+                textLabel = node.addComponent(LabelComponent);
             }
-            textLabel.overflow = Label.Overflow.CLAMP;
-            textLabel.fontSize = this.fontSize;
+            textLabel.overflow = LabelComponent.Overflow.CLAMP;
+            textLabel.fontSize = this._fontSize;
             textLabel.lineHeight = this.lineHeight;
             this._textLabel = textLabel;
         }
@@ -478,54 +625,54 @@ let EditBox = cc.Class({
         if (!this._placeholderLabel) {
             let node = this.node.getChildByName('PLACEHOLDER_LABEL');
             if (!node) {
-                node = new cc.Node('PLACEHOLDER_LABEL');
+                node = new cc.NodeUI('PLACEHOLDER_LABEL');
             }
-            node.color = this.placeholderFontColor;
+            node.color = this._placeholderFontColor;
             node.parent = this.node;
             node.setAnchorPoint(0, 1);
 
-            let placeholderLabel = node.getComponent(Label);
+            let placeholderLabel = node.getComponent(LabelComponent);
             if (!placeholderLabel) {
-                placeholderLabel = node.addComponent(Label);
+                placeholderLabel = node.addComponent(LabelComponent);
             }
-            placeholderLabel.overflow = Label.Overflow.CLAMP;
-            placeholderLabel.fontSize = this.placeholderFontSize;
-            placeholderLabel.string = this.placeholder;
+            placeholderLabel.overflow = LabelComponent.Overflow.CLAMP;
+            placeholderLabel.fontSize = this._placeholderFontSize;
+            placeholderLabel.string = this._placeholder;
             this._placeholderLabel = placeholderLabel;
         }
-    },
+    }
 
-    _resizeChildNodes () {
+    _resizeChildNodes() {
         let textLabelNode = this._textLabel.node,
             placeholderLabelNode = this._placeholderLabel.node,
             backgroundNode = this._background.node;
-            
-        textLabelNode.x = -this.node.width/2;
-        textLabelNode.y = this.node.height/2;
+
+        textLabelNode.x = -this.node.width / 2;
+        textLabelNode.y = this.node.height / 2;
         textLabelNode.width = this.node.width;
         textLabelNode.height = this.node.height;
-        
-        placeholderLabelNode.x = -this.node.width/2;
-        placeholderLabelNode.y = this.node.height/2;
+
+        placeholderLabelNode.x = -this.node.width / 2;
+        placeholderLabelNode.y = this.node.height / 2;
         placeholderLabelNode.width = this.node.width;
-        placeholderLabelNode.height = this.node.height;            
-        
+        placeholderLabelNode.height = this.node.height;
+
         backgroundNode.width = this.node.width;
         backgroundNode.height = this.node.height;
-    },
+    }
 
-    _showLabels () {
+    _showLabels() {
         let displayText = this._textLabel.string;
         this._textLabel.node.active = displayText !== '';
         this._placeholderLabel.node.active = displayText === '';
-    },
+    }
 
-    _hideLabels () {
+    _hideLabels() {
         this._textLabel.node.active = false;
         this._placeholderLabel.node.active = false;
-    },
+    }
 
-    _updateString (text) {
+    _updateString(text) {
         let textLabel = this._textLabel;
         // Not inited yet
         if (!textLabel) {
@@ -542,10 +689,10 @@ let EditBox = cc.Class({
         if (!this._impl._editing && !this.stayOnTop) {
             this._showLabels();
         }
-    },
+    }
 
-    _updateLabelStringStyle (text, ignorePassword) {
-        let inputFlag = this.inputFlag;
+    _updateLabelStringStyle(text, ignorePassword) {
+        let inputFlag = this._inputFlag;
         if (!ignorePassword && inputFlag === InputFlag.PASSWORD) {
             let passwordString = '';
             let len = text.length;
@@ -553,7 +700,7 @@ let EditBox = cc.Class({
                 passwordString += '\u25CF';
             }
             text = passwordString;
-        } 
+        }
         else if (inputFlag === InputFlag.INITIAL_CAPS_ALL_CHARACTERS) {
             text = text.toUpperCase();
         }
@@ -565,89 +712,65 @@ let EditBox = cc.Class({
         }
 
         return text;
-    },
+    }
 
-    editBoxEditingDidBegan () {
+    editBoxEditingDidBegan() {
         this._hideLabels();
         cc.Component.EventHandler.emitEvents(this.editingDidBegan, this);
         this.node.emit('editing-did-began', this);
-    },
+    }
 
-    editBoxEditingDidEnded () {
+    editBoxEditingDidEnded() {
         if (!this.stayOnTop) {
             this._showLabels();
         }
         cc.Component.EventHandler.emitEvents(this.editingDidEnded, this);
         this.node.emit('editing-did-ended', this);
-    },
+    }
 
-    editBoxTextChanged (text) {
+    editBoxTextChanged(text) {
         text = this._updateLabelStringStyle(text, true);
         this.string = text;
         cc.Component.EventHandler.emitEvents(this.textChanged, text, this);
         this.node.emit('text-changed', this);
-    },
+    }
 
     editBoxEditingReturn() {
         cc.Component.EventHandler.emitEvents(this.editingReturn, this);
         this.node.emit('editing-return', this);
-    },
+    }
 
-    onDestroy () {
-        this._impl.clear();
-    },
-
-    onEnable () {
-        this._impl && this._impl.onEnable();
-    },
-
-    onDisable () {
-        this._impl && this._impl.onDisable();
-    },
-
-    __preload () {
-        if (!CC_EDITOR) {
-            this._registerEvent();
-        }
-        this._init();
-    },
-
-    _registerEvent () {
-        this.node.on(cc.Node.EventType.TOUCH_START, this._onTouchBegan, this);
-        this.node.on(cc.Node.EventType.TOUCH_END, this._onTouchEnded, this);
-    },
-
-    _onTouchBegan (event) {
+    _onTouchBegan(event) {
         if (this._impl) {
             this._impl._onTouchBegan(event.touch);
         }
         event.stopPropagation();
-    },
+    }
 
-    _onTouchCancel (event) {
+    _onTouchCancel(event) {
         if (this._impl) {
             this._impl._onTouchCancel();
         }
         event.stopPropagation();
-    },
+    }
 
-    _onTouchEnded (event) {
+    _onTouchEnded(event) {
         if (this._impl) {
             this._impl._onTouchEnded();
         }
         event.stopPropagation();
-    },
+    }
 
     /**
      * !#en Let the EditBox get focus
      * !#zh 让当前 EditBox 获得焦点
      * @method setFocus
      */
-    setFocus () {
-        if(this._impl) {
+    setFocus() {
+        if (this._impl) {
             this._impl.setFocus();
         }
-    },
+    }
 
     /**
      * !#en Determine whether EditBox is getting focus or not.
@@ -655,23 +778,20 @@ let EditBox = cc.Class({
      * Note: only available on Web at the moment.
      * @method isFocused
      */
-    isFocused () {
+    isFocused() {
         let isFocused = false;
         if (this._impl) {
             isFocused = this._impl.isFocused();
         }
         return isFocused;
-    },
+    }
 
-    update () {
+    update() {
         if (this._impl) {
             this._impl.update();
         }
     }
-
-});
-
-cc.EditBox = module.exports = EditBox;
+}
 
 /**
  * !#en

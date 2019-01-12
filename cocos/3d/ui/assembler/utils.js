@@ -1,5 +1,5 @@
 
-import { vec3, mat4 } from '../../../../core/vmath/index';
+import { vec3, mat4 } from '../../../core/vmath/index';
 
 let vec3_temp = vec3.create();
 let _worldMatrix = mat4.create();
@@ -83,12 +83,12 @@ function fillVertices3D(node, buffer, renderData, color) {
         uintbuf = buffer._uintVData;
 
     // let matrix = node._worldMatrix;
-    node.getWorldMatrix(_worldMatrix);
+    // node.getWorldMatrix(_worldMatrix);
 
     for (let i = 0; i < vertexCount; i++) {
         let vert = data[i];
         vec3.set(vec3_temp, vert.x, vert.y, 0);
-        vec3.transformMat4(vec3_temp, vec3_temp, _worldMatrix);
+        // vec3.transformMat4(vec3_temp, vec3_temp, _worldMatrix);
         vbuf[vertexOffset++] = vec3_temp.x;
         vbuf[vertexOffset++] = vec3_temp.y;
         vbuf[vertexOffset++] = vec3_temp.z;
@@ -114,12 +114,12 @@ function fillMeshVertices3D(node, buffer, renderData, color) {
         ibuf = buffer._iData;
 
     // let matrix = node._worldMatrix;
-    node.getWorldMatrix(_worldMatrix);
+    // node.getWorldMatrix(_worldMatrix);
 
     for (let i = 0; i < vertexCount; i++) {
         let vert = data[i];
         vec3.set(vec3_temp, vert.x, vert.y, 0);
-        vec3.transformMat4(vec3_temp, vec3_temp, _worldMatrix);
+        // vec3.transformMat4(vec3_temp, vec3_temp, _worldMatrix);
         vbuf[vertexOffset++] = vec3_temp.x;
         vbuf[vertexOffset++] = vec3_temp.y;
         vbuf[vertexOffset++] = vec3_temp.z;

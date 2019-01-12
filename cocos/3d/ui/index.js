@@ -1,10 +1,24 @@
 import UISystem from './UISystem';
 import CanvasComponent from './CCCanvas';
 import SpriteComponent from './CCSprite';
-import LableComponent from './CCLabel';
+import LabelComponent from './CCLabel';
+import './assembler/index';
+import ButtonComponent from '../../2d/ui/CCButton';
+import ToggleGroupComponent from '../../2d/ui/CCToggleGroup';
+import ToggleComponent from '../../2d/ui/CCToggle';
+import SliderComponent from '../../2d/ui/CCSlider';
+import ProgressBarComponent from '../../2d/ui/CCProgressBar';
+import WidgetComponent from '../../2d/ui/CCWidget';
+import EditBoxComponent from '../../2d/ui/editbox/CCEditBox';
 
 cc.UISystem = UISystem;
 cc.CanvasComponent = CanvasComponent;
 cc.SpriteComponent = SpriteComponent;
-cc.LableComponent = LableComponent;
-
+cc.LabelComponent = LabelComponent;
+cc.ButtonComponent = ButtonComponent;
+cc.ToggleGroupComponent = ToggleGroupComponent;
+cc.ToggleComponent = ToggleComponent;
+cc.SliderComponent = SliderComponent;
+cc.ProgressBarComponent = ProgressBarComponent;
+cc.WidgetComponent = WidgetComponent;
+cc.EditBoxComponent = EditBoxComponent;

@@ -23,11 +23,14 @@
  THE SOFTWARE.
  ****************************************************************************/
 
-const js = require('../../../../platform/js');
-const ttfUtls = require('../../../utils/label/ttf');
+import * as js from '../../../../core/utils/js';
+import ttfUtls from '../../../../2d/renderer/utils/label/ttf';
+import { fillMeshVertices3D } from '../utils';
 
-module.exports = js.addon({
-    createData (comp) {
+const WHITE = cc.color(255, 255, 255, 255);
+
+let ttf = {
+    createData(comp) {
         let renderData = comp.requestRenderData();
 
         renderData.dataLength = 4;
@@ -46,32 +49,11 @@ module.exports = js.addon({
         return renderData;
     },
 
-    fillBuffers (comp, renderer) {
-        let data = comp._renderData._data,
-            node = comp.node,
-            matrix = node._worldMatrix,
-            a = matrix.m00, b = matrix.m01, c = matrix.m04, d = matrix.m05,
-            tx = matrix.m12, ty = matrix.m13;
-    
-        let buffer = renderer._quadBuffer,
-            vertexOffset = buffer.byteOffset >> 2;
-
-        buffer.request(4, 6);
-
-        // buffer data may be realloc, need get reference after request.
-        let vbuf = buffer._vData;
-
-        // vertex
-        for (let i = 0; i < 4; i++) {
-            let vert = data[i];
-            vbuf[vertexOffset++] = vert.x * a + vert.y * c + tx;
-            vbuf[vertexOffset++] = vert.x * b + vert.y * d + ty;
-            vbuf[vertexOffset++] = vert.u;
-            vbuf[vertexOffset++] = vert.v;
-        }
+    fillBuffers(comp, /*renderer*/buffer) {
+        fillMeshVertices3D(comp.node, /*renderer._quadBuffer3D*/buffer, comp._renderData, WHITE._val);
     },
 
-    _updateVerts (comp) {
+    _updateVerts(comp) {
         let renderData = comp._renderData;
 
         let node = comp.node,
@@ -90,4 +72,9 @@ module.exports = js.addon({
         data[3].x = width - appx;
         data[3].y = height - appy;
     }
-}, ttfUtls);
+}
+
+js.addon(ttf, ttfUtls);
+
+export default ttf;
+

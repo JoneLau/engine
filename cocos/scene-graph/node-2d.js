@@ -34,6 +34,7 @@ import * as js from '../core/utils/js';
 import EventTarget from '../core/event/event-target';
 import { BaseNode } from './base-node';
 import { ccclass, property } from '../core/data/class-decorator';
+import { vec3 } from '../core/vmath/index';
 
 const Flags = cc.Object.Flags;
 const Destroying = Flags.Destroying;
@@ -525,44 +526,16 @@ if (CC_EDITOR) {
 @ccclass("cc.NodeUI")
 export default class NodeUI extends BaseNode {
     @property
-    _opacity = 255;
-
-    @property
-    _color = cc.Color.WHITE;
-
-    @property
-    _contentSize = new cc.Size();
-
+    _contentSize = new cc.Size(100, 100);
     @property
     _anchorPoint = cc.v2(0.5, 0.5);
-
     @property
-    _position = cc.v3();
-
+    _lpos = cc.v3();
     @property
-    _scaleX = 1.0;
-
+    _lscale = cc.v3(1, 1, 1);
     @property
-    _scaleY = 1.0;
-
-    @property
-    _scale = cc.v3(1, 1, 1);
-
-    @property
-    _rotationX = 0.0;
-
-    @property
-    _rotationY = 0.0;
-
-    @property
-    _quat = new cc.Quat();
-
-    @property
-    _skewX = 0.0;
-
-    @property
-    _skewY = 0.0;
-
+    _lrot = cc.quat();
+    _eulerAngles = cc.v3();
     @property({
         serializable: false
     })
@@ -571,8 +544,15 @@ export default class NodeUI extends BaseNode {
     @property
     _zIndex = 0;
 
-    @property
+    // world transform
+    _pos = cc.v3();
+    _rot = cc.quat();
+    _scale = cc.v3(1, 1, 1);
+    _worldMatrix = cc.mat4();
+
     _hasChanged = false;
+    _dirty = false;
+    _matDirty = false;
 
     // internal properties
 
@@ -632,10 +612,10 @@ export default class NodeUI extends BaseNode {
      */
     @property
     get x() {
-        return this._position.x;
+        return this._lpos.x;
     }
     set x(value) {
-        var localPosition = this._position;
+        var localPosition = this._lpos;
         if (value !== localPosition.x) {
             if (!CC_EDITOR || isFinite(value)) {
                 if (CC_EDITOR) {
@@ -644,12 +624,13 @@ export default class NodeUI extends BaseNode {
 
                 localPosition.x = value;
                 this.setLocalDirty(LocalDirtyFlag.POSITION);
+                // this._renderFlag |= RenderFlow.FLAG_WORLD_TRANSFORM;
 
                 // fast check event
                 if (this._eventMask & POSITION_ON) {
                     // send event
                     if (CC_EDITOR) {
-                        this.emit(EventType.POSITION_CHANGED, new cc.Vec2(oldValue, localPosition.y));
+                        this.emit(EventType.POSITION_CHANGED, new cc.Vec3(oldValue, localPosition.y, localPosition.z));
                     }
                     else {
                         this.emit(EventType.POSITION_CHANGED);
@@ -673,10 +654,10 @@ export default class NodeUI extends BaseNode {
      */
     @property
     get y() {
-        return this._position.y;
+        return this._lpos.y;
     }
     set y(value) {
-        var localPosition = this._position;
+        var localPosition = this._lpos;
         if (value !== localPosition.y) {
             if (!CC_EDITOR || isFinite(value)) {
                 if (CC_EDITOR) {
@@ -685,12 +666,13 @@ export default class NodeUI extends BaseNode {
 
                 localPosition.y = value;
                 this.setLocalDirty(LocalDirtyFlag.POSITION);
+                // this._renderFlag |= RenderFlow.FLAG_WORLD_TRANSFORM;
 
                 // fast check event
                 if (this._eventMask & POSITION_ON) {
                     // send event
                     if (CC_EDITOR) {
-                        this.emit(EventType.POSITION_CHANGED, new cc.Vec2(localPosition.x, oldValue));
+                        this.emit(EventType.POSITION_CHANGED, new cc.Vec3(localPosition.x, oldValue, localPosition.z));
                     }
                     else {
                         this.emit(EventType.POSITION_CHANGED);
@@ -705,10 +687,10 @@ export default class NodeUI extends BaseNode {
 
     @property
     get z() {
-        return this._position.z;
+        return this._lpos.z;
     }
     set z(value) {
-        var localPosition = this._position;
+        var localPosition = this._lpos;
         if (value !== localPosition.z) {
             if (!CC_EDITOR || isFinite(value)) {
                 localPosition.z = value;
@@ -735,37 +717,35 @@ export default class NodeUI extends BaseNode {
      */
     @property
     get rotation() {
-        return this._rotationX;
+        // return this._rotationX;
+        return -this.eulerAngles;
     }
     set rotation(value) {
-        if (this._rotationX !== value || this._rotationY !== value) {
-            this._rotationX = this._rotationY = value;
-            // Update quaternion from rotation
-            math.quat.fromEuler(this._quat, 0, 0, -value);
-            this.setLocalDirty(LocalDirtyFlag.ROTATION);
-
-            if (this._eventMask & ROTATION_ON) {
-                this.emit(EventType.ROTATION_CHANGED);
-            }
-        }
+        this.eulerAngles = -value;
     }
 
     /**
-     * !#en The rotation as Euler angles in degrees, used in 2.5D project.
-     * !#zh 该节点的欧拉角度，用于 2.5D 项目。
+     * !#en
+     * Angle of node, the positive value is anti-clockwise direction.
+     * !#zh
+     * 该节点的旋转角度，正值为逆时针方向。
      * @property eulerAngles
-     * @type {Vec3}
+     * @type {Number}
      */
     @property
     get eulerAngles() {
-        return cc.v3(this._rotationX, this._rotationY, this._rotationZ);
+        return this._eulerAngles.z;
     }
-    set eulerAngles(v) {
-        this._rotationX = v.x;
-        this._rotationY = v.y;
-        this._rotationZ = v.z;
-        math.quat.fromEuler(this._quat, v.x, v.y, v.z);
+
+    set eulerAngles(value) {
+        math.vec3.set(this._eulerAngles, 0, 0, value);
+        this._fromEuler();
         this.setLocalDirty(LocalDirtyFlag.ROTATION);
+        // this._renderFlag |= RenderFlow.FLAG_TRANSFORM;
+
+        if (this._eventMask & ROTATION_ON) {
+            this.emit(EventType.ROTATION_CHANGED);
+        }
     }
 
     /**
@@ -779,19 +759,20 @@ export default class NodeUI extends BaseNode {
      */
     @property
     get rotationX() {
-        return this._rotationX;
+        return this._eulerAngles.x;
     }
     set rotationX(value) {
-        if (this._rotationX !== value) {
-            this._rotationX = value;
+        if (this._eulerAngles.x !== value) {
+            this._eulerAngles.x = value;
             // Update quaternion from rotation
-            if (this._rotationX === this._rotationY) {
-                math.quat.fromEuler(this._quat, 0, 0, -value);
+            if (this._eulerAngles.x === this._eulerAngles.y) {
+                math.quat.fromEuler(this._lrot, 0, 0, -value);
             }
             else {
-                math.quat.fromEuler(this._quat, value, this._rotationY, 0);
+                math.quat.fromEuler(this._lrot, value, this._eulerAngles.y, 0);
             }
             this.setLocalDirty(LocalDirtyFlag.ROTATION);
+            // this._renderFlag |= RenderFlow.FLAG_TRANSFORM;
 
             if (this._eventMask & ROTATION_ON) {
                 this.emit(EventType.ROTATION_CHANGED);
@@ -810,19 +791,20 @@ export default class NodeUI extends BaseNode {
      */
     @property
     get rotationY() {
-        return this._rotationY;
+        return this._eulerAngles.y;
     }
     set rotationY(value) {
-        if (this._rotationY !== value) {
-            this._rotationY = value;
+        if (this._eulerAngles.y !== value) {
+            this._eulerAngles.y = value;
             // Update quaternion from rotation
-            if (this._rotationX === this._rotationY) {
-                math.quat.fromEuler(this._quat, 0, 0, -value);
+            if (this._eulerAngles.x === this._eulerAngles.y) {
+                math.quat.fromEuler(this._lrot, 0, 0, -value);
             }
             else {
-                math.quat.fromEuler(this._quat, this._rotationX, value, 0);
+                math.quat.fromEuler(this._lrot, this._eulerAngles.x, value, 0);
             }
             this.setLocalDirty(LocalDirtyFlag.ROTATION);
+            // this._renderFlag |= RenderFlow.FLAG_TRANSFORM;
 
             if (this._eventMask & ROTATION_ON) {
                 this.emit(EventType.ROTATION_CHANGED);
@@ -850,12 +832,13 @@ export default class NodeUI extends BaseNode {
      */
     @property
     get scaleX() {
-        return this._scale.x;
+        return this._lscale.x;
     }
     set scaleX(value) {
-        if (this._scale.x !== value) {
-            this._scale.x = value;
+        if (this._lscale.x !== value) {
+            this._lscale.x = value;
             this.setLocalDirty(LocalDirtyFlag.SCALE);
+            // this._renderFlag |= RenderFlow.FLAG_TRANSFORM;
 
             if (this._eventMask & SCALE_ON) {
                 this.emit(EventType.SCALE_CHANGED);
@@ -872,14 +855,15 @@ export default class NodeUI extends BaseNode {
      * node.scaleY = 0.5;
      * cc.log("Node Scale Y: " + node.scaleY);
      */
-    @property
+
     get scaleY() {
-        return this._scale.y;
+        return this._lscale.y;
     }
     set scaleY(value) {
-        if (this._scale.y !== value) {
-            this._scale.y = value;
+        if (this._lscale.y !== value) {
+            this._lscale.y = value;
             this.setLocalDirty(LocalDirtyFlag.SCALE);
+            // this._renderFlag |= RenderFlow.FLAG_TRANSFORM;
 
             if (this._eventMask & SCALE_ON) {
                 this.emit(EventType.SCALE_CHANGED);
@@ -896,14 +880,14 @@ export default class NodeUI extends BaseNode {
      * node.skewX = 0;
      * cc.log("Node SkewX: " + node.skewX);
      */
-    @property
-    get skewX() {
-        return this._skewX;
-    }
-    set skewX(value) {
-        this._skewX = value;
-        this.setLocalDirty(LocalDirtyFlag.SKEW);
-    }
+    // @property
+    // get skewX() {
+    //     return this._skewX;
+    // }
+    // set skewX(value) {
+    //     this._skewX = value;
+    //     this.setLocalDirty(LocalDirtyFlag.SKEW);
+    // }
 
     /**
      * !#en Skew y
@@ -914,14 +898,14 @@ export default class NodeUI extends BaseNode {
      * node.skewY = 0;
      * cc.log("Node SkewY: " + node.skewY);
      */
-    @property
-    get skewY() {
-        return this._skewY;
-    }
-    set skewY(value) {
-        this._skewY = value;
-        this.setLocalDirty(LocalDirtyFlag.SKEW);
-    }
+    // @property
+    // get skewY() {
+    //     return this._skewY;
+    // }
+    // set skewY(value) {
+    //     this._skewY = value;
+    //     this.setLocalDirty(LocalDirtyFlag.SKEW);
+    // }
 
     /**
      * !#en Opacity of node, default value is 255.
@@ -931,17 +915,17 @@ export default class NodeUI extends BaseNode {
      * @example
      * node.opacity = 255;
      */
-    @property({
-        range: [0, 255, 1]
-    })
-    get opacity() {
-        return this._opacity;
-    }
-    set opacity(value) {
-        if (this._opacity !== value) {
-            this._opacity = value;
-        }
-    }
+    // @property({
+    //     range: [0, 255, 1]
+    // })
+    // get opacity() {
+    //     return this._opacity;
+    // }
+    // set opacity(value) {
+    //     if (this._opacity !== value) {
+    //         this._opacity = value;
+    //     }
+    // }
 
     /**
      * !#en Color of node, default value is white: (255, 255, 255).
@@ -951,18 +935,18 @@ export default class NodeUI extends BaseNode {
      * @example
      * node.color = new cc.Color(255, 255, 255);
      */
-    @property
-    get color() {
-        return this._color.clone();
-    }
-    set color(value) {
-        if (!this._color.equals(value)) {
-            this._color.set(value);
-            if (CC_DEV && value.a !== 255) {
-                cc.warnID(1626);
-            }
-        }
-    }
+    // @property
+    // get color() {
+    //     return this._color.clone();
+    // }
+    // set color(value) {
+    //     if (!this._color.equals(value)) {
+    //         this._color.set(value);
+    //         if (CC_DEV && value.a !== 255) {
+    //             cc.warnID(1626);
+    //         }
+    //     }
+    // }
 
     /**
      * !#en Anchor point's position on x axis.
@@ -1140,19 +1124,20 @@ export default class NodeUI extends BaseNode {
         this._mouseListener = null;
 
         // default scale
-        this._scale.x = 1;
-        this._scale.y = 1;
-        this._scale.z = 1;
+        this._lscale.x = 1;
+        this._lscale.y = 1;
+        this._lscale.z = 1;
 
         this._matrix = _mat4Pool.get();
         this._worldMatrix = _mat4Pool.get();
         this._localMatDirty = LocalDirtyFlag.ALL;
         this._worldMatDirty = true;
 
+
         this._eventMask = 0;
         this._cullingMask = 1 << this.groupIndex;
 
-        this._rotationZ = 0;
+        // this._rotationZ = 0;
     }
 
     // OVERRIDES
@@ -1239,30 +1224,38 @@ export default class NodeUI extends BaseNode {
         }
     }
 
-    _onHierarchyChanged(oldParent) {
-        this._updateOrderOfArrival();
-        if (this._parent) {
-            this._parent._delaySort();
-        }
-        this._onHierarchyChangedBase(oldParent);
-        if (cc._widgetManager) {
-            cc._widgetManager._nodesOrderDirty = true;
-        }
-    }
+    // _onHierarchyChanged(oldParent) {
+    //     this._updateOrderOfArrival();
+    //     if (this._parent) {
+    //         this._parent._delaySort();
+    //     }
+    //     this._onHierarchyChangedBase(oldParent);
+    //     if (cc._widgetManager) {
+    //         cc._widgetManager._nodesOrderDirty = true;
+    //     }
+    // }
 
     // INTERNAL
+
+    _toEuler() {
+        math.quat.toEuler(this._eulerAngles, this._lrot);
+    }
+
+    _fromEuler() {
+        math.quat.fromEuler(this._lrot, this._eulerAngles.x, this._eulerAngles.y, this._eulerAngles.z);
+    }
 
     _upgrade_1x_to_2x() {
         // Upgrade scaleX, scaleY from v1.x
         // TODO: remove in future version, 3.0 ?
-        if (this._scaleX !== undefined) {
-            this._scale.x = this._scaleX;
-            this._scaleX = undefined;
-        }
-        if (this._scaleY !== undefined) {
-            this._scale.y = this._scaleY;
-            this._scaleY = undefined;
-        }
+        // if (this._scaleX !== undefined) {
+        //     this._lscale.x = this._scaleX;
+        //     this._scaleX = undefined;
+        // }
+        // if (this._scaleY !== undefined) {
+        //     this._lscale.y = this._scaleY;
+        //     this._scaleY = undefined;
+        // }
 
         if (this._localZOrder !== 0) {
             this._zIndex = (this._localZOrder & 0xffff0000) >> 16;
@@ -1271,33 +1264,26 @@ export default class NodeUI extends BaseNode {
         // TODO: remove _rotationX & _rotationY in future version, 3.0 ?
         // Update quaternion from rotation, when upgrade from 1.x to 2.0
         // If rotation x & y is 0 in old version, then update rotation from default quaternion is ok too
-        if (this._rotationX !== 0 || this._rotationY !== 0) {
+        let quat = this._lrot;
+        if ((this._rotationX || this._rotationY) &&
+            (quat.x === 0 && quat.y === 0 && quat.z === 0 && quat.w === 1)) {
             if (this._rotationX === this._rotationY) {
-                math.quat.fromEuler(this._quat, 0, 0, -this._rotationX);
+                math.quat.fromEuler(quat, 0, 0, -this._rotationX);
             }
             else {
-                math.quat.fromEuler(this._quat, this._rotationX, this._rotationY, 0);
+                math.quat.fromEuler(quat, this._rotationX, this._rotationY, 0);
             }
+            this._rotationX = this._rotationY = undefined;
         }
-        // Update rotation from quaternion
-        else {
-            let rotx = this._quat.getRoll();
-            let roty = this._quat.getPitch();
-            if (rotx === 0 && roty === 0) {
-                this._rotationX = this._rotationY = -this._quat.getYaw();
-            }
-            else {
-                this._rotationX = rotx;
-                this._rotationY = roty;
-            }
-        }
+
+        this._toEuler();
 
         // Upgrade from 2.0.0 preview 4 & earlier versions
         // TODO: Remove after final version
-        if (this._color.a < 255 && this._opacity === 255) {
-            this._opacity = this._color.a;
-            this._color.a = 255;
-        }
+        // if (this._color.a < 255 && this._opacity === 255) {
+        //     this._opacity = this._color.a;
+        //     this._color.a = 255;
+        // }
     }
 
     /*
@@ -1329,6 +1315,10 @@ export default class NodeUI extends BaseNode {
         for (let i = 0, len = children.length; i < len; i++) {
             children[i]._onBatchCreated();
         }
+
+        // if (children.length > 0) {
+        //     this._renderFlag |= RenderFlow.FLAG_CHILDREN;
+        // }
     }
 
     // the same as _onBatchCreated but untouch prefab
@@ -1349,6 +1339,10 @@ export default class NodeUI extends BaseNode {
         for (var i = 0, len = children.length; i < len; i++) {
             children[i]._onBatchRestored();
         }
+
+        // if (children.length > 0) {
+        //     this._renderFlag |= RenderFlow.FLAG_CHILDREN;
+        // }
     }
 
     // EVENT TARGET
@@ -1775,13 +1769,39 @@ export default class NodeUI extends BaseNode {
             cameraPt = _vec2a,
             testPt = _vec2b;
 
-        let camera = cc.Camera.findCamera(this);
-        if (camera) {
-            camera.getCameraToWorldPoint(point, cameraPt);
+        let renderComp = this.getComponent(cc.RenderComponent);
+        if (!renderComp) {
+            return false;
         }
-        else {
-            cameraPt.set(point);
+        let canvas = cc.CanvasComponent.findView(renderComp);
+        if (!canvas) {
+            return;
         }
+
+        canvas.node.getWorldRT(_mat4_temp);
+
+        let m12 = _mat4_temp.m12;
+        let m13 = _mat4_temp.m13;
+
+        let center = cc.visibleRect.center;
+        // let size = cc.view.getFrameSize();
+        // let center = cc.v2(size.width / 2, size.height / 2);
+        // let center = cc.v2(cc.game._renderer._device._gl.canvas.width / 2, cc.game._renderer._device._gl.canvas.height / 2);
+        _mat4_temp.m12 = center.x - (_mat4_temp.m00 * m12 + _mat4_temp.m04 * m13);
+        _mat4_temp.m13 = center.y - (_mat4_temp.m01 * m12 + _mat4_temp.m05 * m13);
+
+        // if (out !== _mat4_temp) {
+        //     mat4.copy(out, _mat4_temp);
+        // }
+        math.mat4.invert(_mat4_temp, _mat4_temp);
+        math.vec2.transformMat4(cameraPt, point, _mat4_temp);
+        // let camera = cc.Camera.findCamera(this);
+        // if (camera) {
+        //     camera.getCameraToWorldPoint(point, cameraPt);
+        // }
+        // else {
+        //     cameraPt.set(point);
+        // }
 
         this._updateWorldMatrix();
         math.mat4.invert(_mat4_temp, this._worldMatrix);
@@ -1866,7 +1886,7 @@ export default class NodeUI extends BaseNode {
      * cc.log("Node Position: " + node.getPosition());
      */
     getPosition() {
-        return new cc.Vec2(this._position);
+        return new cc.Vec2(this._lpos);
     }
 
     /**
@@ -1894,7 +1914,7 @@ export default class NodeUI extends BaseNode {
             x = newPosOrX;
         }
 
-        var locPosition = this._position;
+        var locPosition = this._lpos;
         if (locPosition.x === x && locPosition.y === y) {
             return;
         }
@@ -1939,9 +1959,9 @@ export default class NodeUI extends BaseNode {
      * cc.log("Node Scale: " + node.getScale());
      */
     getScale() {
-        if (this._scale.x !== this._scale.y)
+        if (this._lscale.x !== this._lscale.y)
             cc.logID(1603);
-        return this._scale.x;
+        return this._lscale.x;
     }
 
     /**
@@ -1962,9 +1982,9 @@ export default class NodeUI extends BaseNode {
         else if (y === undefined) {
             y = x;
         }
-        if (this._scale.x !== x || this._scale.y !== y) {
-            this._scale.x = x;
-            this._scale.y = y;
+        if (this._lscale.x !== x || this._lscale.y !== y) {
+            this._lscale.x = x;
+            this._lscale.y = y;
             this.setLocalDirty(LocalDirtyFlag.SCALE);
 
             if (this._eventMask & SCALE_ON) {
@@ -2124,14 +2144,14 @@ export default class NodeUI extends BaseNode {
         }
 
         // out = parent_inv_pos - pos
-        math.vec3.sub(out, out, this._position);
+        math.vec3.sub(out, out, this._lpos);
 
         // out = inv(rot) * out
-        math.quat.conjugate(_quat_temp, this._quat);
+        math.quat.conjugate(_quat_temp, this._lrot);
         math.vec3.transformQuat(out, out, _quat_temp);
 
         // out = (1/scale) * out
-        math.vec3.inverseSafe(_vec3_temp, this._scale);
+        math.vec3.inverseSafe(_vec3_temp, this._lscale);
         math.vec3.mul(out, out, _vec3_temp);
 
         return out;
@@ -2140,20 +2160,20 @@ export default class NodeUI extends BaseNode {
     /*
      * Calculate and return world position.
      * This is not a public API yet, its usage could be updated
-     * @method getWorldPos
+     * @method getWorldPosition
      * @param {Vec3} out
      * @return {Vec3}
      */
-    getWorldPos(out) {
-        math.vec3.copy(out, this._position);
+    getWorldPosition(out) {
+        math.vec3.copy(out, this._lpos);
         let curr = this._parent;
         while (curr) {
-            // out = parent_scale * pos
-            math.vec3.mul(out, out, curr._scale);
+            // out = parent_lscale * pos
+            math.vec3.mul(out, out, curr._lscale);
             // out = parent_quat * out
-            math.vec3.transformQuat(out, out, curr._quat);
+            math.vec3.transformQuat(out, out, curr._lrot);
             // out = out + pos
-            math.vec3.add(out, out, curr._position);
+            math.vec3.add(out, out, curr._lpos);
             curr = curr._parent;
         }
         return out;
@@ -2162,16 +2182,16 @@ export default class NodeUI extends BaseNode {
     /*
      * Set world position.
      * This is not a public API yet, its usage could be updated
-     * @method setWorldPos
+     * @method setWorldPosition
      * @param {vec3} pos
      */
-    setWorldPos(pos) {
+    setWorldPosition(pos) {
         // NOTE: this is faster than invert world matrix and transform the point
         if (this._parent) {
-            this._parent._invTransformPoint(this._position, pos);
+            this._parent._invTransformPoint(this._lpos, pos);
         }
         else {
-            math.vec3.copy(this._position, pos);
+            math.vec3.copy(this._lpos, pos);
         }
         this.setLocalDirty(LocalDirtyFlag.POSITION);
 
@@ -2190,15 +2210,15 @@ export default class NodeUI extends BaseNode {
     /*
      * Calculate and return world rotation
      * This is not a public API yet, its usage could be updated
-     * @method getWorldRot
+     * @method getWorldRotation
      * @param {Quat} out
      * @return {Quat}
      */
-    getWorldRot(out) {
-        math.quat.copy(out, this._quat);
+    getWorldRotation(out) {
+        math.quat.copy(out, this._lrot);
         let curr = this._parent;
         while (curr) {
-            math.quat.mul(out, curr._quat, out);
+            math.quat.mul(out, curr._lrot, out);
             curr = curr._parent;
         }
         return out;
@@ -2207,17 +2227,17 @@ export default class NodeUI extends BaseNode {
     /*
      * Set world rotation with quaternion
      * This is not a public API yet, its usage could be updated
-     * @method setWorldRot
+     * @method setWorldRotation
      * @param {Quat} rot
      */
-    setWorldRot(quat) {
+    setWorldRotation(quat) {
         if (this._parent) {
-            this._parent.getWorldRot(this._quat);
-            math.quat.conjugate(this._quat, this._quat);
-            math.quat.mul(this._quat, this._quat, quat);
+            this._parent.getWorldRotation(this._lrot);
+            math.quat.conjugate(this._lrot, this._lrot);
+            math.quat.mul(this._lrot, this._lrot, quat);
         }
         else {
-            math.quat.copy(this._quat, quat);
+            math.quat.copy(this._lrot, quat);
         }
         this.setLocalDirty(LocalDirtyFlag.ROTATION);
     }
@@ -2225,23 +2245,22 @@ export default class NodeUI extends BaseNode {
     getWorldRT(out) {
         let opos = _vec3_temp;
         let orot = _quat_temp;
-        math.vec3.copy(opos, this._position);
-        math.quat.copy(orot, this._quat);
+        math.vec3.copy(opos, this._lpos);
+        math.quat.copy(orot, this._lrot);
 
         let curr = this._parent;
         while (curr) {
             // opos = parent_lscale * lpos
             math.vec3.mul(opos, opos, curr._scale);
             // opos = parent_lrot * opos
-            math.vec3.transformQuat(opos, opos, curr._quat);
+            math.vec3.transformQuat(opos, opos, curr._lrot);
             // opos = opos + lpos
-            math.vec3.add(opos, opos, curr._position);
+            math.vec3.add(opos, opos, curr._lpos);
             // orot = lrot * orot
-            math.quat.mul(orot, curr._quat, orot);
+            math.quat.mul(orot, curr._lrot, orot);
             curr = curr._parent;
         }
         math.mat4.fromRT(out, orot, opos);
-        return out;
     }
 
     /**
@@ -2252,12 +2271,12 @@ export default class NodeUI extends BaseNode {
      * @param {Vec3} [up] - default is (0,1,0)
      */
     lookAt(pos, up) {
-        this.getWorldPos(_vec3_temp);
+        this.getWorldPosition(_vec3_temp);
         math.vec3.sub(_vec3_temp, _vec3_temp, pos); // NOTE: we use -z for view-dir
         math.vec3.normalize(_vec3_temp, _vec3_temp);
         math.quat.fromViewUp(_quat_temp, _vec3_temp, up);
 
-        this.setWorldRot(_quat_temp);
+        this.setWorldRotation(_quat_temp);
     }
 
     resetHasChanged() {
@@ -2268,20 +2287,34 @@ export default class NodeUI extends BaseNode {
         }
     }
 
+    /**
+     * invalidate the world transform information
+     * for this node and all its children recursively
+     */
+    invalidateChildren() {
+        if (this._dirty && this._hasChanged) return;
+        this._dirty = this._hasChanged = true;
+
+        let len = this._children.length;
+        for (let i = 0; i < len; ++i) {
+            this._children[i].invalidateChildren();
+        }
+    }
+
     _updateLocalMatrix() {
         let dirtyFlag = this._localMatDirty;
         if (!dirtyFlag) return;
 
         // Update transform
         let t = this._matrix;
-        //math.mat4.fromRTS(t, this._quat, this._position, this._scale);
+        //math.mat4.fromRTS(t, this._lrot, this._lpos, this._lscale);
 
         if (dirtyFlag & (LocalDirtyFlag.RT | LocalDirtyFlag.SKEW)) {
             let hasRotation = this._rotationX || this._rotationY;
-            let hasSkew = this._skewX || this._skewY;
-            let sx = this._scale.x, sy = this._scale.y;
+            // let hasSkew = this._skewX || this._skewY;
+            let sx = this._lscale.x, sy = this._lscale.y;
 
-            if (hasRotation || hasSkew) {
+            if (hasRotation /*|| hasSkew*/) {
                 let a = 1, b = 0, c = 0, d = 1;
                 // rotation
                 if (hasRotation) {
@@ -2304,19 +2337,19 @@ export default class NodeUI extends BaseNode {
                 t.m04 = c *= sy;
                 t.m05 = d *= sy;
                 // skew
-                if (hasSkew) {
-                    let a = t.m00, b = t.m01, c = t.m04, d = t.m05;
-                    let skx = Math.tan(this._skewX * ONE_DEGREE);
-                    let sky = Math.tan(this._skewY * ONE_DEGREE);
-                    if (skx === Infinity)
-                        skx = 99999999;
-                    if (sky === Infinity)
-                        sky = 99999999;
-                    t.m00 = a + c * sky;
-                    t.m01 = b + d * sky;
-                    t.m04 = c + a * skx;
-                    t.m05 = d + b * skx;
-                }
+                // if (hasSkew) {
+                //     let a = t.m00, b = t.m01, c = t.m04, d = t.m05;
+                //     let skx = Math.tan(this._skewX * ONE_DEGREE);
+                //     let sky = Math.tan(this._skewY * ONE_DEGREE);
+                //     if (skx === Infinity)
+                //         skx = 99999999;
+                //     if (sky === Infinity)
+                //         sky = 99999999;
+                //     t.m00 = a + c * sky;
+                //     t.m01 = b + d * sky;
+                //     t.m04 = c + a * skx;
+                //     t.m05 = d + b * skx;
+                // }
             }
             else {
                 t.m00 = sx;
@@ -2327,8 +2360,8 @@ export default class NodeUI extends BaseNode {
         }
 
         // position
-        t.m12 = this._position.x;
-        t.m13 = this._position.y;
+        t.m12 = this._lpos.x;
+        t.m13 = this._lpos.y;
 
         this._localMatDirty = 0;
         // Register dirty status of world matrix so that it can be recalculated
@@ -2425,7 +2458,12 @@ export default class NodeUI extends BaseNode {
      */
     getWorldMatrix(out) {
         this._updateWorldMatrix();
-        return math.mat4.copy(out, this._worldMatrix);
+
+        if (out) {
+            return math.mat4.copy(out, this._worldMatrix);
+        } else {
+            return math.mat4.copy(cc.mat4(), this._worldMatrix);
+        }
     }
 
     /**
@@ -2760,35 +2798,35 @@ export default class NodeUI extends BaseNode {
         this._localZOrder = (this._localZOrder & 0xffff0000) | arrivalOrder;
     }
 
-    /**
-     * !#en
-     * Adds a child to the node with z order and name.
-     * !#zh
-     * 添加子节点，并且可以修改该节点的 局部 Z 顺序和名字。
-     * @method addChild
-     * @param {Node} child - A child node
-     * @param {Number} [zIndex] - Z order for drawing priority. Please refer to zIndex property
-     * @param {String} [name] - A name to identify the node easily. Please refer to name property
-     * @example
-     * node.addChild(newNode, 1, "node");
-     */
-    addChild(child, zIndex, name) {
-        if (CC_DEV && !cc.Node.isNode(child)) {
-            return cc.errorID(1634, cc.js.getClassName(child));
-        }
-        cc.assertID(child, 1606);
-        cc.assertID(child._parent === null, 1605);
+    // /**
+    //  * !#en
+    //  * Adds a child to the node with z order and name.
+    //  * !#zh
+    //  * 添加子节点，并且可以修改该节点的 局部 Z 顺序和名字。
+    //  * @method addChild
+    //  * @param {Node} child - A child node
+    //  * @param {Number} [zIndex] - Z order for drawing priority. Please refer to zIndex property
+    //  * @param {String} [name] - A name to identify the node easily. Please refer to name property
+    //  * @example
+    //  * node.addChild(newNode, 1, "node");
+    //  */
+    // addChild(child, zIndex, name) {
+    //     if (CC_DEV && !cc.Node.isNode(child)) {
+    //         return cc.errorID(1634, cc.js.getClassName(child));
+    //     }
+    //     cc.assertID(child, 1606);
+    //     cc.assertID(child._parent === null, 1605);
 
-        // invokes the parent setter
-        child.parent = this;
+    //     // invokes the parent setter
+    //     child.parent = this;
 
-        if (zIndex !== undefined) {
-            child.zIndex = zIndex;
-        }
-        if (name !== undefined) {
-            child.name = name;
-        }
-    }
+    //     if (zIndex !== undefined) {
+    //         child.zIndex = zIndex;
+    //     }
+    //     if (name !== undefined) {
+    //         child.name = name;
+    //     }
+    // }
 
     /**
      * !#en Stops all running actions and schedulers.
@@ -2869,6 +2907,7 @@ export default class NodeUI extends BaseNode {
 
         this._localMatDirty = LocalDirtyFlag.ALL;
         this._worldMatDirty = true;
+
 
         if (this._renderComponent) {
             if (this._renderComponent.enabled) {
