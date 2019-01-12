@@ -4,6 +4,7 @@ import ImageAsset from '../../assets/image-asset';
 import { Material } from '../assets/material';
 import { EffectAsset } from '../assets/effect-asset';
 import effects from './effects';
+import SpriteFrame from '../../assets/CCSpriteFrame';
 
 let builtinResMgr = {
     // this should be called after renderer initialized
@@ -70,6 +71,15 @@ let builtinResMgr = {
         // blackTexture.setWrapMode(Texture2D.WrapMode.REPEAT, Texture2D.WrapMode.REPEAT);
         // whiteTexture._uuid = 'white-texture';
         // defaultTexture.image = canvasImage;
+
+        let spriteFrame = new SpriteFrame();
+        spriteFrame.setFilters(Texture2D.Filter.NEAREST, Texture2D.Filter.NEAREST);
+        spriteFrame.setWrapMode(Texture2D.WrapMode.REPEAT, Texture2D.WrapMode.REPEAT);
+        spriteFrame._uuid = 'default-spriteframe';
+        spriteFrame.image = canvasImage;
+        if (spriteFrame.onLoaded) {
+            spriteFrame.onLoaded();
+        }
 
         // essential builtin effects
         let efxs = effects.map(e => {

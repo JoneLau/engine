@@ -22,53 +22,18 @@
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE.
  ****************************************************************************/
-import * as js from '../../../core/utils/js';
-import { vec3, mat4 } from '../../../core/vmath/index';
-import RenderData from '../../../3d/ui/renderData';
-import CCSprite from '../CCSprite';
 
-// const js = require('../../../../../platform/js');
-// const assembler = require('../2d/bar-filled');
-import { fillVerticesWithoutCalc3D } from '../../../2d/renderer/webgl/assemblers/utils';
+import SpriteComponent from '../../CCSprite';
+const FillType = SpriteComponent.FillType;
 
-let matrix = mat4.create();
+// const dynamicAtlasManager = require('../../../../utils/dynamic-atlas/manager');
+import { fillVerticesWithoutCalc3D } from '../utils';
+import { vec3 } from '../../../../core/vmath/index';
 
-export default class BarFilled {
-    static createData(comp) {
-        let renderData = RenderData.add();
-        comp._renderData = renderData.data;
-        comp._renderDataPoolID = renderData.pooID;
-        renderData = comp._renderData;
-        // 0-4 for world verts
-        // 5-8 for local verts
-        renderData.dataLength = 8;
-        renderData.vertexCount = 4;
-        renderData.indiceCount = 6;
-        return renderData;
-    }
-
-    static removeData(comp) {
-        if (comp._renderData) {
-            RenderData.remove(comp._renderDataPoolID);
-            comp._renderDataPoolID = -1;
-            comp._renderData = null;
-        }
-    }
-
-    static updateWorldVerts(comp) {
-        let node = comp.node,
-            data = comp._renderData._data;
-
-        node.getWorldMatrix(matrix);
-        for (let i = 0; i < 4; i++) {
-            let local = data[i + 4];
-            let world = data[i];
-            vec3.transformMat4(world, local, matrix);
-        }
-    }
-
-    static updateRenderData(comp) {
-        let frame = comp.spriteFrame;
+let barFilled = {
+    useModel: false,
+    updateRenderData(sprite) {
+        let frame = sprite.spriteFrame;
 
         // TODO: Material API design and export from editor could affect the material activation process
         // need to update the logic here
@@ -76,22 +41,22 @@ export default class BarFilled {
         //     if (!frame._original && dynamicAtlasManager) {
         //         dynamicAtlasManager.insertSpriteFrame(frame);
         //     }
-        //     if (comp._material._texture !== frame._texture) {
-        //         comp._activateMaterial();
+        //     if (sprite._material._texture !== frame._texture) {
+        //         sprite._activateMaterial();
         //     }
         // }
 
-        let renderData = comp._renderData;
+        let renderData = sprite._renderData;
         if (renderData && frame) {
             let uvDirty = renderData.uvDirty,
                 vertDirty = renderData.vertDirty;
 
-            // if (!uvDirty && !vertDirty) {
-            //     return comp.__allocedDatas;
-            // }
+            if (!uvDirty && !vertDirty) {
+                return sprite.__allocedDatas;
+            }
 
-            let fillStart = comp._fillStart;
-            let fillRange = comp._fillRange;
+            let fillStart = sprite._fillStart;
+            let fillRange = sprite._fillRange;
 
             if (fillRange < 0) {
                 fillStart += fillRange;
@@ -112,23 +77,23 @@ export default class BarFilled {
             fillEnd = fillEnd > 1 ? 1 : fillEnd;
 
             if (uvDirty) {
-                this.updateUVs(comp, fillStart, fillEnd);
+                this.updateUVs(sprite, fillStart, fillEnd);
             }
             if (vertDirty) {
-                this.updateVerts(comp, fillStart, fillEnd);
-                this.updateWorldVerts(comp);
+                this.updateVerts(sprite, fillStart, fillEnd);
+                // this.updateWorldVerts(sprite);
             }
         }
-    }
+    },
 
-    static updateUVs(comp, fillStart, fillEnd) {
-        let spriteFrame = comp._spriteFrame,
-            renderData = comp._renderData,
+    updateUVs(sprite, fillStart, fillEnd) {
+        let spriteFrame = sprite._spriteFrame,
+            renderData = sprite._renderData,
             data = renderData._data;
 
         //build uvs
-        let atlasWidth = spriteFrame._texture.width;
-        let atlasHeight = spriteFrame._texture.height;
+        let atlasWidth = spriteFrame.width;
+        let atlasHeight = spriteFrame.height;
         let textureRect = spriteFrame._rect;
         //uv computation should take spritesheet into account.
         let ul, vb, ur, vt;
@@ -150,32 +115,50 @@ export default class BarFilled {
             ur = (textureRect.x + textureRect.width) / atlasWidth;
             vt = (textureRect.y) / atlasHeight;
 
-            quadUV0 = quadUV4 = ul;
-            quadUV2 = quadUV6 = ur;
-            quadUV1 = quadUV3 = vb;
-            quadUV5 = quadUV7 = vt;
+            // quadUV0 = quadUV4 = ul;
+            // quadUV2 = quadUV6 = ur;
+            // quadUV1 = quadUV3 = vb;
+            // quadUV5 = quadUV7 = vt;
         }
 
-        switch (comp._fillType) {
-            case CCSprite.FillType.HORIZONTAL:
-                data[0].u = quadUV0 + (quadUV2 - quadUV0) * fillStart;
-                data[0].v = quadUV1;
-                data[1].u = quadUV0 + (quadUV2 - quadUV0) * fillEnd;
-                data[1].v = quadUV3;
-                data[2].u = quadUV4 + (quadUV6 - quadUV4) * fillStart;
-                data[2].v = quadUV5;
-                data[3].u = quadUV4 + (quadUV6 - quadUV4) * fillEnd;
-                data[3].v = quadUV7;
+        switch (sprite._fillType) {
+            case FillType.HORIZONTAL:
+                data[0].u = ul + (ur - ul) * fillStart;
+                data[0].v = vb;
+                data[1].u = ul + (ur - ul) * fillEnd;
+                data[1].v = vb;
+                data[2].u = ul + (ur - ul) * fillStart;
+                data[2].v = vt;
+                data[3].u = ul + (ur - ul) * fillEnd;
+                data[3].v = vt;
+
+                // data[0].u = quadUV0 + (quadUV2 - quadUV0) * fillStart;
+                // data[0].v = quadUV1 + (quadUV3 - quadUV1) * fillStart;
+                // data[1].u = quadUV0 + (quadUV2 - quadUV0) * fillEnd;
+                // data[1].v = quadUV1 + (quadUV3 - quadUV1) * fillEnd;
+                // data[2].u = quadUV4 + (quadUV6 - quadUV4) * fillStart;
+                // data[2].v = quadUV5 + (quadUV7 - quadUV5) * fillStart;
+                // data[3].u = quadUV4 + (quadUV6 - quadUV4) * fillEnd;
+                // data[3].v = quadUV5 + (quadUV7 - quadUV5) * fillEnd;
                 break;
-            case CCSprite.FillType.VERTICAL:
-                data[0].u = quadUV0;
-                data[0].v = quadUV1 + (quadUV5 - quadUV1) * fillStart;
-                data[1].u = quadUV2;
-                data[1].v = quadUV3 + (quadUV7 - quadUV3) * fillStart;
-                data[2].u = quadUV4;
-                data[2].v = quadUV1 + (quadUV5 - quadUV1) * fillEnd;
-                data[3].u = quadUV6;
-                data[3].v = quadUV3 + (quadUV7 - quadUV3) * fillEnd;
+            case FillType.VERTICAL:
+                data[0].u = ul
+                data[0].v = vb + (vt - vb) * fillStart;
+                data[1].u = ur;
+                data[1].v = vb + (vt - vb) * fillStart;
+                data[2].u = ul;
+                data[2].v = vb + (vt - vb) * fillEnd;
+                data[3].u = ur;
+                data[3].v = vb + (vt - vb) * fillEnd;
+
+                // data[0].u = quadUV0 + (quadUV4 - quadUV0) * fillStart;
+                // data[0].v = quadUV1 + (quadUV5 - quadUV1) * fillStart;
+                // data[1].u = quadUV2 + (quadUV6 - quadUV2) * fillStart;
+                // data[1].v = quadUV3 + (quadUV7 - quadUV3) * fillStart;
+                // data[2].u = quadUV0 + (quadUV4 - quadUV0) * fillEnd;
+                // data[2].v = quadUV1 + (quadUV5 - quadUV1) * fillEnd;
+                // data[3].u = quadUV2 + (quadUV6 - quadUV2) * fillEnd;
+                // data[3].v = quadUV3 + (quadUV7 - quadUV3) * fillEnd;
                 break;
             default:
                 cc.errorID(2626);
@@ -183,29 +166,28 @@ export default class BarFilled {
         }
 
         renderData.uvDirty = false;
-    }
+    },
 
-    static updateVerts(comp, fillStart, fillEnd) {
-        let renderData = comp._renderData,
+    updateVerts(sprite, fillStart, fillEnd) {
+        let renderData = sprite._renderData,
             data = renderData._data,
-            node = comp.node,
-            // width = node.width, height = node.height,
-            width = comp.size.width, height = comp.size.height,
-            appx = comp.anchor.x * width, appy = comp.anchor.y * height;
+            node = sprite.node,
+            width = node.width, height = node.height,
+            appx = node.anchorX * width, appy = node.anchorY * height;
 
         let l = -appx, b = -appy,
             r = width - appx, t = height - appy;
 
         let progressStart, progressEnd;
-        switch (comp._fillType) {
-            case CCSprite.FillType.HORIZONTAL:
+        switch (sprite._fillType) {
+            case FillType.HORIZONTAL:
                 progressStart = l + (r - l) * fillStart;
                 progressEnd = l + (r - l) * fillEnd;
 
                 l = progressStart;
                 r = progressEnd;
                 break;
-            case CCSprite.FillType.VERTICAL:
+            case FillType.VERTICAL:
                 progressStart = b + (t - b) * fillStart;
                 progressEnd = b + (t - b) * fillEnd;
 
@@ -217,21 +199,49 @@ export default class BarFilled {
                 break;
         }
 
-        data[4].x = l;
-        data[4].y = b;
-        data[5].x = r;
-        data[5].y = b;
-        data[6].x = l;
-        data[6].y = t;
-        data[7].x = r;
-        data[7].y = t;
+        data[0].x = l;
+        data[0].y = b;
+        data[1].x = r;
+        data[1].y = b;
+        data[2].x = l;
+        data[2].y = t;
+        data[3].x = r;
+        data[3].y = t;
 
         renderData.vertDirty = false;
-    }
+    },
 
-    static fillBuffers(comp, buffer) {
+    createData(sprite) {
+        let renderData = sprite.requestRenderData();
+        // 0-4 for world verts
+        // 5-8 for local verts
+        renderData.dataLength = 4;
+        renderData.vertexCount = 4;
+        renderData.indiceCount = 6;
+
+        let data = renderData._data;
+        for (let i = 0; i < data.length; i++) {
+            data[i].z = 0;
+        }
+        return renderData;
+    },
+
+    // updateWorldVerts(sprite) {
+    //     let node = sprite.node,
+    //         data = sprite._renderData._data;
+
+    //     node._updateWorldMatrix();
+    //     let matrix = node._worldMatrix;
+    //     for (let i = 0; i < 4; i++) {
+    //         let local = data[i + 4];
+    //         let world = data[i];
+    //         vec3.transformMat4(world, local, matrix);
+    //     }
+    // },
+
+    fillBuffers(sprite, /*renderer*/buffer) {
         // if (renderer.worldMatDirty) {
-        this.updateWorldVerts(comp);
+        // this.updateWorldVerts(sprite);
         // }
 
         // buffer
@@ -239,8 +249,8 @@ export default class BarFilled {
             indiceOffset = buffer.indiceOffset,
             vertexId = buffer.vertexOffset;
 
-        let node = comp.node;
-        fillVerticesWithoutCalc3D(node, buffer, comp._renderData, comp._color._val);
+        let node = sprite.node;
+        fillVerticesWithoutCalc3D(node, buffer, sprite._renderData, sprite._color._val);
 
         // buffer data may be realloc, need get reference after request.
         let ibuf = buffer._iData;
@@ -251,5 +261,6 @@ export default class BarFilled {
         ibuf[indiceOffset++] = vertexId + 3;
         ibuf[indiceOffset++] = vertexId + 2;
     }
-}
+};
 
+export default barFilled;

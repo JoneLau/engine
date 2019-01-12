@@ -126,13 +126,26 @@ export default class CanvasComponent extends Component {
         this._priority = value;
     }
 
-    /**
-    * !#en Current active canvas, the scene should only have one active canvas at the same time.
-    * !#zh 当前激活的画布组件，场景同一时间只能有一个激活的画布。
-    * @property {CanvasComponent} instance
-    * @static
-    */
-    static instance = null;
+    static views = [];
+
+    static findView(comp) {
+        for (var i = 0; i < CanvasComponent.views.length; i++) {
+            var element = CanvasComponent.views[i];
+            if (element.id === comp._viewID) {
+                return element.comp;
+            }
+        }
+
+        return null;
+    }
+
+    // /**
+    // * !#en Current active canvas, the scene should only have one active canvas at the same time.
+    // * !#zh 当前激活的画布组件，场景同一时间只能有一个激活的画布。
+    // * @property {CanvasComponent} instance
+    // * @static
+    // */
+    // static instance = null;
 
     constructor() {
         super();
@@ -164,18 +177,19 @@ export default class CanvasComponent extends Component {
             return cc.errorID(6700,
                 this.node.name, CanvasComponent.instance.node.name);
         }
-        CanvasComponent.instance = this;
+        // CanvasComponent.instance = this;
 
         if (CC_EDITOR) {
             cc.engine.on('design-resolution-changed', this._thisOnResized);
         }
         else {
-            if (cc.sys.isMobile) {
-                window.addEventListener('resize', this._thisOnResized);
-            }
-            else {
-                cc.view.on('canvas-resize', this._thisOnResized);
-            }
+            // if (cc.sys.isMobile) {
+            //     window.addEventListener('resize', this._thisOnResized);
+            // }
+            // else {
+            //     cc.view.on('canvas-resize', this._thisOnResized);
+            // }
+            cc.view.on('design-resolution-changed', this._thisOnResized);
         }
 
         this.applySettings();
@@ -214,9 +228,9 @@ export default class CanvasComponent extends Component {
 
         cc.director._uiSystem.removeScreen(this);
 
-        if (CanvasComponent.instance === this) {
-            CanvasComponent.instance = null;
-        }
+        // if (CanvasComponent.instance === this) {
+        //     CanvasComponent.instance = null;
+        // }
     }
 
     //
@@ -224,24 +238,24 @@ export default class CanvasComponent extends Component {
     alignWithScreen() {
         var designSize, nodeSize;
         // if (CC_EDITOR) {
-        //     // nodeSize = designSize = cc.engine.getDesignResolutionSize();
+        //     nodeSize = designSize = cc.engine.getDesignResolutionSize();
         //     this.node.setPosition(designSize.width * 0.5, designSize.height * 0.5, 1);
         // }
         // else {
-        //     var canvasSize = nodeSize = cc.visibleRect;
-        //     designSize = cc.view.getDesignResolutionSize();
-        //     var clipTopRight = !this.fitHeight && !this.fitWidth;
-        //     var offsetX = 0;
-        //     var offsetY = 0;
-        //     if (clipTopRight) {
-        //         // offset the canvas to make it in the center of screen
-        //         offsetX = (designSize.width - canvasSize.width) * 0.5;
-        //         offsetY = (designSize.height - canvasSize.height) * 0.5;
-        //     }
-        //     this.node.setPosition(canvasSize.width * 0.5 + offsetX, canvasSize.height * 0.5 + offsetY, 1);
+        var canvasSize = nodeSize = cc.visibleRect;
+        designSize = cc.view.getDesignResolutionSize();
+        var clipTopRight = !this.fitHeight && !this.fitWidth;
+        var offsetX = 0;
+        var offsetY = 0;
+        if (clipTopRight) {
+            // offset the canvas to make it in the center of screen
+            offsetX = (designSize.width - canvasSize.width) * 0.5;
+            offsetY = (designSize.height - canvasSize.height) * 0.5;
+        }
+        this.node.setPosition(canvasSize.width * 0.5 + offsetX, canvasSize.height * 0.5 + offsetY, 1);
         // }
-        let canvasSize = cc.game.canvas;
-        this.node.setPosition(canvasSize.width / 2, canvasSize.height / 2, 1);
+        // let canvasSize = nodeSize = cc.visibleRect;
+        // this.node.setPosition(canvasSize.width / 2, canvasSize.height / 2, 1);
         this.node.width = nodeSize.width;
         this.node.height = nodeSize.height;
     }
@@ -264,12 +278,12 @@ export default class CanvasComponent extends Component {
         }
 
         var designRes = this._designResolution;
-        if (CC_EDITOR) {
-            cc.engine.setDesignResolutionSize(designRes.width, designRes.height);
-        }
-        else {
-            cc.view.setDesignResolutionSize(designRes.width, designRes.height, policy);
-        }
+        // if (CC_EDITOR) {
+        //     cc.engine.setDesignResolutionSize(designRes.width, designRes.height);
+        // }
+        // else {
+        cc.view.setDesignResolutionSize(designRes.width, designRes.height, policy);
+        // }
     }
 }
 

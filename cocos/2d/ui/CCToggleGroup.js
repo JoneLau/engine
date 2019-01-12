@@ -23,6 +23,8 @@
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE.
  ****************************************************************************/
+import Component from '../../components/CCComponent';
+import { ccclass, menu, executionOrder, executeInEditMode, property } from '../../core/data/class-decorator';
 
 /**
  * !#en ToggleGroup is not a visiable UI component but a way to modify the behavior of a set of Toggles.
@@ -32,74 +34,77 @@
  * @class ToggleGroup
  * @extends Component
  */
-var ToggleGroup = cc.Class({
-    name: 'cc.ToggleGroup',
-    extends: cc.Component,
-    ctor: function () {
-        this._toggleItems = [];
-    },
-    editor: CC_EDITOR && {
-        menu: 'i18n:MAIN_MENU.component.ui/ToggleGroup (Legacy)',
-        help: 'i18n:COMPONENT.help_url.toggleGroup'
-    },
 
-    properties: {
-        /**
-         * !#en If this setting is true, a toggle could be switched off and on when pressed.
-         * If it is false, it will make sure there is always only one toggle could be switched on
-         * and the already switched on toggle can't be switched off.
-         * !#zh 如果这个设置为 true， 那么 toggle 按钮在被点击的时候可以反复地被选中和未选中。
-         * @property {Boolean} allowSwitchOff
-         */
-        allowSwitchOff: {
-            tooltip: CC_DEV && 'i18n:COMPONENT.toggle_group.allowSwitchOff',
-            default: false
-        },
+@ccclass('cc.ToggleGroupComponent')
+@executionOrder(100)
+@menu('UI/ToggleGroup')
+@executeInEditMode
+export default class ToggleGroupComponent extends Component {
+    @property
+    _alloSwitchOff = false;
+    _toggleItems = [];
 
-        /**
-         * !#en Read only property, return the toggle items array reference managed by toggleGroup.
-         * !#zh 只读属性，返回 toggleGroup 管理的 toggle 数组引用
-         * @property {Array} toggleItems
-         */
-        toggleItems: {
-            get: function () {
-                return this._toggleItems;
-            }
-        }
-    },
+    /**
+     * !#en If this setting is true, a toggle could be switched off and on when pressed.
+     * If it is false, it will make sure there is always only one toggle could be switched on
+     * and the already switched on toggle can't be switched off.
+     * !#zh 如果这个设置为 true， 那么 toggle 按钮在被点击的时候可以反复地被选中和未选中。
+     * @property {Boolean} allowSwitchOff
+     */
+    @property
+    get allowSwitchOff() {
+        return this._alloSwitchOff;
+    }
 
-    updateToggles: function (toggle) {
-        if(!this.enabledInHierarchy) return;
+    set allowSwitchOff(value) {
+        this._alloSwitchOff = value;
+    }
 
-        this._toggleItems.forEach(function (item){
-            if(toggle.isChecked) {
+    /**
+     * !#en Read only property, return the toggle items array reference managed by toggleGroup.
+     * !#zh 只读属性，返回 toggleGroup 管理的 toggle 数组引用
+     * @property {Array} toggleItems
+     */
+    get toggleItems() {
+        return this._toggleItems;
+    }
+
+    start() {
+        this._makeAtLeastOneToggleChecked();
+    }
+
+    updateToggles(toggle) {
+        if (!this.enabledInHierarchy) return;
+
+        this._toggleItems.forEach(function (item) {
+            if (toggle.isChecked) {
                 if (item !== toggle && item.isChecked && item.enabled) {
                     item.isChecked = false;
                 }
             }
         });
-    },
+    }
 
-    addToggle: function (toggle) {
+    addToggle(toggle) {
         var index = this._toggleItems.indexOf(toggle);
         if (index === -1) {
             this._toggleItems.push(toggle);
         }
         this._allowOnlyOneToggleChecked();
-    },
+    }
 
-    removeToggle: function (toggle) {
+    removeToggle(toggle) {
         var index = this._toggleItems.indexOf(toggle);
-        if(index > -1) {
+        if (index > -1) {
             this._toggleItems.splice(index, 1);
         }
         this._makeAtLeastOneToggleChecked();
-    },
+    }
 
-    _allowOnlyOneToggleChecked: function () {
+    _allowOnlyOneToggleChecked() {
         var isChecked = false;
         this._toggleItems.forEach(function (item) {
-            if(isChecked && item.enabled) {
+            if (isChecked && item.enabled) {
                 item.isChecked = false;
             }
 
@@ -109,31 +114,15 @@ var ToggleGroup = cc.Class({
         });
 
         return isChecked;
-    },
+    }
 
-    _makeAtLeastOneToggleChecked: function () {
+    _makeAtLeastOneToggleChecked() {
         var isChecked = this._allowOnlyOneToggleChecked();
 
-        if(!isChecked && !this.allowSwitchOff) {
-            if(this._toggleItems.length > 0) {
+        if (!isChecked && !this._allowSwitchOff) {
+            if (this._toggleItems.length > 0) {
                 this._toggleItems[0].isChecked = true;
             }
         }
-    },
-
-    start: function () {
-        this._makeAtLeastOneToggleChecked();
     }
-});
-
-var js = require('../platform/js');
-var showed = false;
-js.get(cc, 'ToggleGroup', function () {
-    if (!showed) {
-        cc.logID(1405, 'cc.ToggleGroup', 'cc.ToggleContainer');
-        showed = true;
-    }
-    return ToggleGroup;
-});
-
-module.exports = ToggleGroup;
+}
