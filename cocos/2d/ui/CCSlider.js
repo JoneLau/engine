@@ -24,8 +24,9 @@
  THE SOFTWARE.
  ****************************************************************************/
 
-const misc = require('../utils/misc');
-const Component = require('./CCComponent');
+import Component from '../../components/CCComponent';
+import { clamp01 } from '../../core/utils/misc';
+import { ccclass, menu, executionOrder, executeInEditMode, property } from '../../core/data/class-decorator';
 
 /**
  * !#en The Slider Direction
@@ -53,181 +54,212 @@ var Direction = cc.Enum({
  * @class Slider
  * @extends Component
  */
-var Slider = cc.Class({
-    name: 'cc.Slider',
-    extends: Component,
+@ccclass('cc.SliderComponent')
+@executionOrder(100)
+@menu('UI/Slider')
+// @executeInEditMode
+export default class SliderComponent extends Component {
+    @property
+    _handle = null;
+    @property
+    _direction = Direction.Horizontal;
+    @property
+    _progress = 0.1;
+    @property
+    _slideEvents = [];
+    _offset = cc.v2();
 
-    editor: CC_EDITOR && {
-        menu: 'i18n:MAIN_MENU.component.ui/Slider',
-        help: 'i18n:COMPONENT.help_url.slider'
-    },
+    /**
+     * !#en The "handle" part of the slider
+     * !#zh 滑动器滑块按钮部件
+     * @property {Button} handle
+     */
+    @property({
+        type: cc.ButtonComponent
+    })
+    get handle() {
+        return this._handle;
+    }
 
-    ctor: function () {
+    set handle(value) {
+        if (this._handle === value) {
+            return;
+        }
+
+        this._handle = value;
+        if (CC_EDITOR && this._handle) {
+            this._updateHandlePosition();
+        }
+    }
+
+    /**
+     * !#en The slider direction
+     * !#zh 滑动器方向
+     * @property {Slider.Direction} direction
+     */
+    @property({
+        type: Direction
+    })
+    get direction() {
+        return this._direction;
+    }
+
+    set direction(value) {
+        if (this._direction === value) {
+            return;
+        }
+
+        this._direction = value;
+    }
+    /**
+     * !#en The current progress of the slider. The valid value is between 0-1
+     * !#zh 当前进度值，该数值的区间是 0-1 之间
+     * @property {Number} progress
+     */
+    @property
+    get progress() {
+        return this._progress;
+    }
+
+    set progress(value) {
+        if (this._progress === value) {
+            return;
+        }
+
+        this._progress = value;
+        this._updateHandlePosition();
+    }
+
+    /**
+     * !#en The slider events callback
+     * !#zh 滑动器组件事件回调函数
+     * @property {Component.EventHandler[]} slideEvents
+     */
+    @property({
+        type: cc.Component.EventHandler
+    })
+    get slideEvents() {
+        return this._slideEvents;
+    }
+
+    set slideEvents(value) {
+        this._slideEvents = value;
+    }
+
+    static Direction = Direction;
+
+    constructor() {
+        super();
         this._offset = cc.v2();
         this._touchHandle = false;
         this._dragging = false;
-    },
+    }
 
-    properties: {
-        /**
-         * !#en The "handle" part of the slider
-         * !#zh 滑动器滑块按钮部件
-         * @property {Button} handle
-         */
-        handle: {
-            default: null,
-            type: cc.Button,
-            tooltip: CC_DEV && 'i18n:COMPONENT.slider.handle',
-            notify: function() {
-                if (CC_EDITOR && this.handle) {
-                    this._updateHandlePosition();
-                }
-            }
-        },
-
-        /**
-         * !#en The slider direction
-         * !#zh 滑动器方向
-         * @property {Slider.Direction} direction
-         */
-        direction: {
-            default: Direction.Horizontal,
-            type: Direction,
-            tooltip: CC_DEV && 'i18n:COMPONENT.slider.direction'
-        },
-
-        /**
-         * !#en The current progress of the slider. The valid value is between 0-1
-         * !#zh 当前进度值，该数值的区间是 0-1 之间
-         * @property {Number} progress
-         */
-        progress: {
-            default: 0.5,
-            type: cc.Float,
-            range: [0, 1, 0.1],
-            slide: true,
-            tooltip: CC_DEV && 'i18n:COMPONENT.slider.progress',
-            notify: function() {
-                this._updateHandlePosition();
-            }
-        },
-
-        /**
-         * !#en The slider events callback
-         * !#zh 滑动器组件事件回调函数
-         * @property {Component.EventHandler[]} slideEvents
-         */
-        slideEvents: {
-            default: [],
-            type: cc.Component.EventHandler,
-            tooltip: CC_DEV && 'i18n:COMPONENT.slider.slideEvents'
-        }
-    },
-
-    statics: {
-        Direction: Direction
-    },
-
-    __preload: function () {
+    __preload() {
         this._updateHandlePosition();
-    },
+    }
 
     // 注册事件
-    onEnable: function () {
-        this.node.on(cc.Node.EventType.TOUCH_START, this._onTouchBegan, this);
-        this.node.on(cc.Node.EventType.TOUCH_MOVE, this._onTouchMoved, this);
-        this.node.on(cc.Node.EventType.TOUCH_END, this._onTouchEnded, this);
-        this.node.on(cc.Node.EventType.TOUCH_CANCEL, this._onTouchCancelled, this);
-        if (this.handle && this.handle.isValid) {
-            this.handle.node.on(cc.Node.EventType.TOUCH_START, this._onHandleDragStart, this);
-            this.handle.node.on(cc.Node.EventType.TOUCH_MOVE, this._onTouchMoved, this);
-            this.handle.node.on(cc.Node.EventType.TOUCH_END, this._onTouchEnded, this);
-        }
-    },
+    onEnable() {
+        // hack
+        this._handle = this.node.getComponentInChildren(cc.RenderComponent);
+        this._updateHandlePosition();
 
-    onDisable: function() {
-        this.node.off(cc.Node.EventType.TOUCH_START, this._onTouchBegan, this);
-        this.node.off(cc.Node.EventType.TOUCH_MOVE, this._onTouchMoved, this);
-        this.node.off(cc.Node.EventType.TOUCH_END, this._onTouchEnded, this);
-        this.node.off(cc.Node.EventType.TOUCH_CANCEL, this._onTouchCancelled, this);
-        if (this.handle && this.handle.isValid) {
-            this.handle.node.off(cc.Node.EventType.TOUCH_START, this._onHandleDragStart, this);
-            this.handle.node.off(cc.Node.EventType.TOUCH_MOVE, this._onTouchMoved, this);
-            this.handle.node.off(cc.Node.EventType.TOUCH_END, this._onTouchEnded, this);
+        this.node.on(cc.NodeUI.EventType.TOUCH_START, this._onTouchBegan, this);
+        this.node.on(cc.NodeUI.EventType.TOUCH_MOVE, this._onTouchMoved, this);
+        this.node.on(cc.NodeUI.EventType.TOUCH_END, this._onTouchEnded, this);
+        this.node.on(cc.NodeUI.EventType.TOUCH_CANCEL, this._onTouchCancelled, this);
+        if (this._handle && this._handle.isValid) {
+            this._handle.node.on(cc.NodeUI.EventType.TOUCH_START, this._onHandleDragStart, this);
+            this._handle.node.on(cc.NodeUI.EventType.TOUCH_MOVE, this._onTouchMoved, this);
+            this._handle.node.on(cc.NodeUI.EventType.TOUCH_END, this._onTouchEnded, this);
         }
-    },
+    }
 
-    _onHandleDragStart: function (event) {
+    onDisable() {
+        this.node.off(cc.NodeUI.EventType.TOUCH_START, this._onTouchBegan, this);
+        this.node.off(cc.NodeUI.EventType.TOUCH_MOVE, this._onTouchMoved, this);
+        this.node.off(cc.NodeUI.EventType.TOUCH_END, this._onTouchEnded, this);
+        this.node.off(cc.NodeUI.EventType.TOUCH_CANCEL, this._onTouchCancelled, this);
+        if (this._handle && this._handle.isValid) {
+            this._handle.node.off(cc.NodeUI.EventType.TOUCH_START, this._onHandleDragStart, this);
+            this._handle.node.off(cc.NodeUI.EventType.TOUCH_MOVE, this._onTouchMoved, this);
+            this._handle.node.off(cc.NodeUI.EventType.TOUCH_END, this._onTouchEnded, this);
+        }
+    }
+
+    _onHandleDragStart(event) {
         this._dragging = true;
         this._touchHandle = true;
-        this._offset = this.handle.node.convertToNodeSpaceAR(event.touch.getLocation());
-        event.stopPropagation();
-    },
+        this._offset = this._handle.node.convertToNodeSpaceAR(event.touch.getLocation());
 
-    _onTouchBegan: function (event) {
-        if (!this.handle) { return; }
+        event.stopPropagation();
+    }
+
+    _onTouchBegan(event) {
+        if (!this._handle) { return; }
         this._dragging = true;
         if (!this._touchHandle) {
             this._handleSliderLogic(event.touch);
         }
-        event.stopPropagation();
-    },
 
-    _onTouchMoved: function (event) {
+        event.stopPropagation();
+    }
+
+    _onTouchMoved(event) {
         if (!this._dragging) { return; }
         this._handleSliderLogic(event.touch);
         event.stopPropagation();
-    },
+    }
 
-    _onTouchEnded: function (event) {
+    _onTouchEnded(event) {
         this._dragging = false;
         this._touchHandle = false;
         this._offset = cc.v2();
         event.stopPropagation();
-    },
+    }
 
-    _onTouchCancelled: function (event) {
+    _onTouchCancelled(event) {
         this._dragging = false;
         event.stopPropagation();
-    },
+    }
 
-    _handleSliderLogic: function (touch) {
+    _handleSliderLogic(touch) {
         this._updateProgress(touch);
         this._emitSlideEvent();
-    },
+    }
 
-    _emitSlideEvent: function () {
+    _emitSlideEvent() {
         cc.Component.EventHandler.emitEvents(this.slideEvents, this);
         this.node.emit('slide', this);
-    },
+    }
 
-    _updateProgress: function (touch) {
-        if (!this.handle) { return; }
+    _updateProgress(touch) {
+        if (!this._handle) { return; }
         var localTouchPos = this.node.convertToNodeSpaceAR(touch.getLocation());
         if (this.direction === Direction.Horizontal) {
-            this.progress = misc.clamp01(0.5 + (localTouchPos.x - this._offset.x) / this.node.width);
+            this.progress = clamp01(0.5 + (localTouchPos.x - this._offset.x) / this.node.width);
         }
         else {
-            this.progress = misc.clamp01(0.5 + (localTouchPos.y - this._offset.y) / this.node.height);
+            this.progress = clamp01(0.5 + (localTouchPos.y - this._offset.y) / this.node.height);
         }
-    },
+    }
 
-    _updateHandlePosition: function () {
-        if (!this.handle) { return; }
+    _updateHandlePosition() {
+        if (!this._handle) { return; }
         var handlelocalPos;
-        if (this.direction === Direction.Horizontal) {
+        if (this._direction === Direction.Horizontal) {
             handlelocalPos = cc.v2(-this.node.width * this.node.anchorX + this.progress * this.node.width, 0);
         }
         else {
             handlelocalPos = cc.v2(0, -this.node.height * this.node.anchorY + this.progress * this.node.height);
         }
         var worldSpacePos = this.node.convertToWorldSpaceAR(handlelocalPos);
-        this.handle.node.position = this.handle.node.parent.convertToNodeSpaceAR(worldSpacePos);
+        this._handle.node.setPosition(this._handle.node.parent.convertToNodeSpaceAR(worldSpacePos));
     }
+}
 
-});
-
-cc.Slider = module.exports = Slider;
+// cc.Slider = module.exports = Slider;
 
 /**
  * !#en

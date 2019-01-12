@@ -180,8 +180,4 @@ let InputFlag = cc.Enum({
     DEFAULT: 5
 });
 
-module.exports = {
-    KeyboardReturnType: KeyboardReturnType,
-    InputMode: InputMode,
-    InputFlag: InputFlag
-};
+export { KeyboardReturnType, InputMode, InputFlag }

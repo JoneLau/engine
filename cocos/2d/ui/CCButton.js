@@ -23,9 +23,11 @@
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE.
  ****************************************************************************/
-
-const Component = require('./CCComponent');
-const misc = require('../utils/misc');
+//@ts-check
+import Component from '../../components/CCComponent';
+import { lerp } from '../../core/utils/misc';
+import { ccclass, menu, executionOrder, executeInEditMode, property } from '../../core/data/class-decorator';
+import * as math from '../../core/vmath/index'
 
 /**
  * !#en Enum for transition type.
@@ -88,24 +90,24 @@ let Transition = cc.Enum({
  *
  * 按钮可以绑定事件（但是必须要在按钮的 Node 上才能绑定事件）：<br/>
  *   // 以下事件可以在全平台上都触发<br/>
- *   -cc.Node.EventType.TOUCH_START  // 按下时事件<br/>
- *   -cc.Node.EventType.TOUCH_Move   // 按住移动后事件<br/>
- *   -cc.Node.EventType.TOUCH_END    // 按下后松开后事件<br/>
- *   -cc.Node.EventType.TOUCH_CANCEL // 按下取消事件<br/>
+ *   -cc.NodeUI.EventType.TOUCH_START  // 按下时事件<br/>
+ *   -cc.NodeUI.EventType.TOUCH_Move   // 按住移动后事件<br/>
+ *   -cc.NodeUI.EventType.TOUCH_END    // 按下后松开后事件<br/>
+ *   -cc.NodeUI.EventType.TOUCH_CANCEL // 按下取消事件<br/>
  *   // 以下事件只在 PC 平台上触发<br/>
- *   -cc.Node.EventType.MOUSE_DOWN  // 鼠标按下时事件<br/>
- *   -cc.Node.EventType.MOUSE_MOVE  // 鼠标按住移动后事件<br/>
- *   -cc.Node.EventType.MOUSE_ENTER // 鼠标进入目标事件<br/>
- *   -cc.Node.EventType.MOUSE_LEAVE // 鼠标离开目标事件<br/>
- *   -cc.Node.EventType.MOUSE_UP    // 鼠标松开事件<br/>
- *   -cc.Node.EventType.MOUSE_WHEEL // 鼠标滚轮事件<br/>
+ *   -cc.NodeUI.EventType.MOUSE_DOWN  // 鼠标按下时事件<br/>
+ *   -cc.NodeUI.EventType.MOUSE_MOVE  // 鼠标按住移动后事件<br/>
+ *   -cc.NodeUI.EventType.MOUSE_ENTER // 鼠标进入目标事件<br/>
+ *   -cc.NodeUI.EventType.MOUSE_LEAVE // 鼠标离开目标事件<br/>
+ *   -cc.NodeUI.EventType.MOUSE_UP    // 鼠标松开事件<br/>
+ *   -cc.NodeUI.EventType.MOUSE_WHEEL // 鼠标滚轮事件<br/>
  *
  * @class Button
  * @extends Component
  * @example
  *
  * // Add an event to the button.
- * button.node.on(cc.Node.EventType.TOUCH_START, function (event) {
+ * button.node.on(cc.NodeUI.EventType.TOUCH_START, function (event) {
  *     cc.log("This is a callback after the trigger event");
  * });
 
@@ -116,350 +118,456 @@ let Transition = cc.Enum({
  * })
  *
  */
-let Button = cc.Class({
-    name: 'cc.Button',
-    extends: Component,
+@ccclass('cc.ButtonComponent')
+@executionOrder(100)
+@menu('UI/Button')
+@executeInEditMode
+export default class ButtonComponent extends Component {
 
-    ctor () {
-        this._pressed = false;
-        this._hovered = false;
-        this._fromColor = null;
-        this._toColor = null;
-        this._time = 0;
-        this._transitionFinished = true;
-        this._fromScale = 1.0;
-        this._toScale = 1.0;
-        this._originalScale = 1.0;
+    _pressed = false;
+    _hovered = false;
+    _fromColor = cc.color();
+    _toColor = cc.color();
+    _time = 0;
+    _transitionFinished = true;
+    _fromScale = math.vec3.create();
+    _toScale = math.vec3.create();
+    _originalScale = math.vec3.create();
+    @property
+    _interactable = true;
+    @property
+    _transition = Transition.NONE;
+    @property
+    _normalColor = cc.color(214, 214, 214);
+    @property
+    _hoverColor = cc.color(211, 211, 211);
+    @property
+    _pressColor = cc.Color.WHITE;
+    @property
+    _disabledColor = cc.color(124, 124, 124);
+    @property
+    _normalSprite = null;
+    @property
+    _hoverSprite = null;
+    @property
+    _pressedSprite = null;
+    @property
+    _disabledSprite = null;
+    /**
+     * range [0,10]
+     */
+    @property
+    _duration = 0.1;
+    @property
+    _zoomScale = 1.2;
+    @property
+    _target = null;
+    @property
+    _clickEvents = [];
+    _previousNormalSprite = null;
 
-        this._sprite = null;
+    /**
+     * !#en
+     * Whether the Button is disabled.
+     * If true, the Button will trigger event and do transition.
+     * !#zh
+     * 按钮事件是否被响应，如果为 false，则按钮将被禁用。
+     * @property {Boolean} interactable
+     * @default true
+     */
+    @property
+    get interactable() {
+        return this._interactable;
+    }
 
+    set interactable(value) {
+        if (CC_EDITOR) {
+            if (value) {
+                this._previousNormalSprite = this.normalSprite;
+            } else {
+                this.normalSprite = this._previousNormalSprite;
+            }
+        }
+        this._interactable = !this._interactable;
+        this._updateState();
+
+        if (!this._interactable) {
+            this._resetState();
+        }
+    }
+
+    set _resizeToTarget(value) {
+        if (value) {
+            this._resizeNodeToTargetNode();
+        }
+    }
+
+    /**
+     * !#en When this flag is true, Button target sprite will turn gray when interactable is false.
+     * !#zh 如果这个标记为 true，当 button 的 interactable 属性为 false 的时候，会使用内置 shader 让 button 的 target 节点的 sprite 组件变灰
+     * @property {Boolean} enableAutoGrayEffect
+     */
+    // enableAutoGrayEffect: {
+    //             default: false,
+    //         tooltip: CC_DEV && 'i18n:COMPONENT.button.auto_gray_effect',
+    //             notify() {
+    //         this._updateDisabledState();
+    //     }
+    // },
+
+    /**
+     * !#en Transition type
+     * !#zh 按钮状态改变时过渡方式。
+     * @property {Button.Transition} transition
+     * @default Button.Transition.Node
+     */
+    @property({
+        type: Transition
+    })
+    get transition() {
+        return this._transition;
+    }
+
+    set transition(value) {
+        if (this._transition === value) {
+            return;
+        }
+
+        this._transition = value;
+    }
+
+    // color transition
+
+    /**
+     * !#en Normal state color.
+     * !#zh 普通状态下按钮所显示的颜色。
+     * @property {Color} normalColor
+     */
+    @property
+    get normalColor() {
+        return this._normalColor;
+    }
+
+    set normalColor(value) {
+        if (this._normalColor === value) {
+            return
+        }
+
+        this._normalColor = value;
+        this._updateState();
+    }
+
+
+    /**
+     * !#en Pressed state color
+     * !#zh 按下状态时按钮所显示的颜色。
+     * @property {Color} pressedColor
+     */
+    @property
+    get pressedColor() {
+        return this._pressColor;
+    }
+
+    set pressedColor(value) {
+        if (this._pressColor === value) {
+            return;
+        }
+
+        this._pressColor = value;
+    }
+
+    /**
+     * !#en Hover state color
+     * !#zh 悬停状态下按钮所显示的颜色。
+     * @property {Color} hoverColor
+     */
+    @property
+    get hoverColor() {
+        return this._hoverColor;
+    }
+
+    set hoverColor(value) {
+        if (this._hoverColor === value) {
+            return;
+        }
+
+        this._hoverColor = value;
+    }
+    /**
+     * !#en Disabled state color
+     * !#zh 禁用状态下按钮所显示的颜色。
+     * @property {Color} disabledColor
+     */
+    @property
+    get disabledColor() {
+        return this._disabledColor;
+    }
+
+    set disabledColor(value) {
+        if (this._disabledColor === value) {
+            return;
+        }
+
+        this._disabledColor = value;
+        this._updateState();
+    }
+
+
+    /**
+     * !#en Color and Scale transition duration
+     * !#zh 颜色过渡和缩放过渡时所需时间
+     * @property {Number} duration
+     */
+    @property
+    get duration() {
+        return this._duration;
+    }
+
+    set duration(value) {
+        if (this._duration === value) {
+            return;
+        }
+
+        this._duration = 0.1;
+    }
+
+    /**
+     * !#en  When user press the button, the button will zoom to a scale.
+     * The final scale of the button  equals (button original scale * zoomScale)
+     * !#zh 当用户点击按钮后，按钮会缩放到一个值，这个值等于 Button 原始 scale * zoomScale
+     * @property {Number} zoomScale
+     */
+    @property
+    get zoomScale() {
+        return this._zoomScale;
+    }
+
+    set zoomScale(value) {
+        if (this._zoomScale === value) {
+            return;
+        }
+
+        this._zoomScale = value;
+    }
+
+    // sprite transition
+    /**
+     * !#en Normal state sprite
+     * !#zh 普通状态下按钮所显示的 Sprite 。
+     * @property {SpriteFrame} normalSprite
+     */
+    @property({
+        type: cc.SpriteFrame
+    })
+    get normalSprite() {
+        return this._normalSprite;
+    }
+
+    set normalSprite(value) {
+        if (this._normalSprite === value) {
+            return;
+        }
+
+        this._normalSprite = value;
+        this._updateState();
+    }
+
+    /**
+     * !#en Pressed state sprite
+     * !#zh 按下状态时按钮所显示的 Sprite 。
+     * @property {SpriteFrame} pressedSprite
+     */
+    @property({
+        type: cc.SpriteFrame
+    })
+    get pressedSprite() {
+        return this._pressedSprite;
+    }
+
+    set pressedSprite(value) {
+        if (this._pressedSprite === value) {
+            return;
+        }
+
+        this._pressedSprite = value;
+        this._updateState();
+    }
+
+    /**
+     * !#en Hover state sprite
+     * !#zh 悬停状态下按钮所显示的 Sprite 。
+     * @property {SpriteFrame} hoverSprite
+     */
+    @property({
+        type: cc.SpriteFrame
+    })
+    get hoverSprite() {
+        return this._hoverSprite;
+    }
+
+    set hoverSprite(value) {
+        if (this._hoverSprite === value) {
+            return;
+        }
+
+        this._hoverSprite = value;
+        this._updateState();
+    }
+
+    /**
+     * !#en Disabled state sprite
+     * !#zh 禁用状态下按钮所显示的 Sprite 。
+     * @property {SpriteFrame} disabledSprite
+     */
+    @property({
+        type: cc.SpriteFrame
+    })
+    get disabledSprite() {
+        return this._disabledSprite;
+    }
+
+    set disabledSprite(value) {
+        if (this._disabledSprite === value) {
+            return;
+        }
+
+        this._disabledSprite = value;
+        this._updateState();
+    }
+
+    /**
+     * !#en
+     * Transition target.
+     * When Button state changed:
+     *  If Transition type is Button.Transition.NONE, Button will do nothing
+     *  If Transition type is Button.Transition.COLOR, Button will change target's color
+     *  If Transition type is Button.Transition.SPRITE, Button will change target Sprite's sprite
+     * !#zh
+     * 需要过渡的目标。
+     * 当前按钮状态改变规则：
+     * -如果 Transition type 选择 Button.Transition.NONE，按钮不做任何过渡。
+     * -如果 Transition type 选择 Button.Transition.COLOR，按钮会对目标颜色进行颜色之间的过渡。
+     * -如果 Transition type 选择 Button.Transition.Sprite，按钮会对目标 Sprite 进行 Sprite 之间的过渡。
+     * @property {Node} target
+     */
+    @property
+    get target() {
+        return this._target;
+    }
+
+    set target(value) {
+        if (this._target === value) {
+            return;
+        }
+
+        this._target = value;
+        this._applyTarget();
+    }
+
+    /**
+     * !#en If Button is clicked, it will trigger event's handler
+     * !#zh 按钮的点击事件列表。
+     * @property {Component.EventHandler[]} clickEvents
+     */
+    @property({
+        type: cc.Component.EventHandler
+    })
+    get clickEvents() {
+        return this._clickEvents;
+    }
+
+    set clickEvents(value) {
+        this._clickEvents = value;
+    }
+
+    static Transition = Transition;
+
+    constructor() {
+        super();
         if (CC_EDITOR) {
             this._previousNormalSprite = null;
         }
-    },
+    }
 
-    editor: CC_EDITOR && {
-        menu: 'i18n:MAIN_MENU.component.ui/Button',
-        help: 'i18n:COMPONENT.help_url.button',
-        inspector: 'packages://inspector/inspectors/comps/button.js',
-        executeInEditMode: true
-    },
-
-    properties: {
-        /**
-         * !#en
-         * Whether the Button is disabled.
-         * If true, the Button will trigger event and do transition.
-         * !#zh
-         * 按钮事件是否被响应，如果为 false，则按钮将被禁用。
-         * @property {Boolean} interactable
-         * @default true
-         */
-        interactable: {
-            default: true,
-            tooltip: CC_DEV && 'i18n:COMPONENT.button.interactable',
-            notify (oldValue) {
-                if (CC_EDITOR) {
-                    if (oldValue) {
-                        this._previousNormalSprite = this.normalSprite;
-                    } else {
-                        this.normalSprite = this._previousNormalSprite;
-                    }
-                }
-                this._updateState();
-
-                if (!this.interactable) {
-                    this._resetState();
-                }
-            },
-            animatable: false
-        },
-
-        _resizeToTarget: {
-            animatable: false,
-            set (value) {
-                if (value) {
-                    this._resizeNodeToTargetNode();
-                }
-            }
-        },
-
-        /**
-         * !#en When this flag is true, Button target sprite will turn gray when interactable is false.
-         * !#zh 如果这个标记为 true，当 button 的 interactable 属性为 false 的时候，会使用内置 shader 让 button 的 target 节点的 sprite 组件变灰
-         * @property {Boolean} enableAutoGrayEffect
-         */
-        enableAutoGrayEffect: {
-            default: false,
-            tooltip: CC_DEV && 'i18n:COMPONENT.button.auto_gray_effect',
-            notify () {
-                this._updateDisabledState();
-            }
-        },
-
-        /**
-         * !#en Transition type
-         * !#zh 按钮状态改变时过渡方式。
-         * @property {Button.Transition} transition
-         * @default Button.Transition.Node
-         */
-        transition: {
-            default: Transition.NONE,
-            tooltip: CC_DEV && 'i18n:COMPONENT.button.transition',
-            type: Transition,
-            animatable: false
-        },
-
-        // color transition
-
-        /**
-         * !#en Normal state color.
-         * !#zh 普通状态下按钮所显示的颜色。
-         * @property {Color} normalColor
-         */
-        normalColor: {
-            default: cc.color(214, 214, 214),
-            displayName: 'Normal',
-            tooltip: CC_DEV && 'i18n:COMPONENT.button.normal_color',
-            notify () {
-                this._updateState();
-            }
-        },
-
-        /**
-         * !#en Pressed state color
-         * !#zh 按下状态时按钮所显示的颜色。
-         * @property {Color} pressedColor
-         */
-        pressedColor: {
-            default: cc.color(211, 211, 211),
-            displayName: 'Pressed',
-            tooltip: CC_DEV && 'i18n:COMPONENT.button.pressed_color',
-        },
-
-        /**
-         * !#en Hover state color
-         * !#zh 悬停状态下按钮所显示的颜色。
-         * @property {Color} hoverColor
-         */
-        hoverColor: {
-            default: cc.Color.WHITE,
-            displayName: 'Hover',
-            tooltip: CC_DEV && 'i18n:COMPONENT.button.hover_color',
-        },
-
-        /**
-         * !#en Disabled state color
-         * !#zh 禁用状态下按钮所显示的颜色。
-         * @property {Color} disabledColor
-         */
-        disabledColor: {
-            default: cc.color(124, 124, 124),
-            displayName: 'Disabled',
-            tooltip: CC_DEV && 'i18n:COMPONENT.button.disabled_color',
-            notify () {
-                this._updateState();
-            }
-        },
-
-        /**
-         * !#en Color and Scale transition duration
-         * !#zh 颜色过渡和缩放过渡时所需时间
-         * @property {Number} duration
-         */
-        duration: {
-            default: 0.1,
-            range: [0, 10],
-            tooltip: CC_DEV && 'i18n:COMPONENT.button.duration',
-        },
-
-        /**
-         * !#en  When user press the button, the button will zoom to a scale.
-         * The final scale of the button  equals (button original scale * zoomScale)
-         * !#zh 当用户点击按钮后，按钮会缩放到一个值，这个值等于 Button 原始 scale * zoomScale
-         * @property {Number} zoomScale
-         */
-        zoomScale: {
-            default: 1.2,
-            tooltip: CC_DEV && 'i18n:COMPONENT.button.zoom_scale'
-        },
-
-        // sprite transition
-        /**
-         * !#en Normal state sprite
-         * !#zh 普通状态下按钮所显示的 Sprite 。
-         * @property {SpriteFrame} normalSprite
-         */
-        normalSprite: {
-            default: null,
-            type: cc.SpriteFrame,
-            displayName: 'Normal',
-            tooltip: CC_DEV && 'i18n:COMPONENT.button.normal_sprite',
-            notify () {
-                this._updateState();
-            }
-        },
-
-        /**
-         * !#en Pressed state sprite
-         * !#zh 按下状态时按钮所显示的 Sprite 。
-         * @property {SpriteFrame} pressedSprite
-         */
-        pressedSprite: {
-            default: null,
-            type: cc.SpriteFrame,
-            displayName: 'Pressed',
-            tooltip: CC_DEV && 'i18n:COMPONENT.button.pressed_sprite',
-            formerlySerializedAs: 'pressedSprite',
-            notify () {
-                this._updateState();
-            }
-        },
-
-        /**
-         * !#en Hover state sprite
-         * !#zh 悬停状态下按钮所显示的 Sprite 。
-         * @property {SpriteFrame} hoverSprite
-         */
-        hoverSprite: {
-            default: null,
-            type: cc.SpriteFrame,
-            displayName: 'Hover',
-            tooltip: CC_DEV && 'i18n:COMPONENT.button.hover_sprite',
-            formerlySerializedAs: 'hoverSprite',
-            notify () {
-                this._updateState();
-            }
-        },
-
-        /**
-         * !#en Disabled state sprite
-         * !#zh 禁用状态下按钮所显示的 Sprite 。
-         * @property {SpriteFrame} disabledSprite
-         */
-        disabledSprite: {
-            default: null,
-            type: cc.SpriteFrame,
-            displayName: 'Disabled',
-            tooltip: CC_DEV && 'i18n:COMPONENT.button.disabled_sprite',
-            notify () {
-                this._updateState();
-            }
-        },
-
-        /**
-         * !#en
-         * Transition target.
-         * When Button state changed:
-         *  If Transition type is Button.Transition.NONE, Button will do nothing
-         *  If Transition type is Button.Transition.COLOR, Button will change target's color
-         *  If Transition type is Button.Transition.SPRITE, Button will change target Sprite's sprite
-         * !#zh
-         * 需要过渡的目标。
-         * 当前按钮状态改变规则：
-         * -如果 Transition type 选择 Button.Transition.NONE，按钮不做任何过渡。
-         * -如果 Transition type 选择 Button.Transition.COLOR，按钮会对目标颜色进行颜色之间的过渡。
-         * -如果 Transition type 选择 Button.Transition.Sprite，按钮会对目标 Sprite 进行 Sprite 之间的过渡。
-         * @property {Node} target
-         */
-        target: {
-            default: null,
-            type: cc.Node,
-            tooltip: CC_DEV && "i18n:COMPONENT.button.target",
-            notify () {
-                this._applyTarget();
-            }
-        },
-
-        /**
-         * !#en If Button is clicked, it will trigger event's handler
-         * !#zh 按钮的点击事件列表。
-         * @property {Component.EventHandler[]} clickEvents
-         */
-        clickEvents: {
-            default: [],
-            type: cc.Component.EventHandler,
-            tooltip: CC_DEV && 'i18n:COMPONENT.button.click_events',
-        }
-    },
-
-    statics: {
-        Transition: Transition,
-    },
-
-    __preload () {
+    __preload() {
         if (!this.target) {
             this.target = this.node;
         }
         this._applyTarget();
         this._updateState();
-    },
+    }
 
-    _resetState () {
+    _resetState() {
         this._pressed = false;
         this._hovered = false;
         // // Restore button status
         let target = this.target;
+        let renderComp = this.target.getComponent(cc.RenderComponent);
         let transition = this.transition;
         if (transition === Transition.COLOR && this.interactable) {
-            target.color = this.normalColor;
+            renderComp.color = this.normalColor;
         } else if (transition === Transition.SCALE) {
             target.scale = this._originalScale;
         }
         this._transitionFinished = true;
-    },
+    }
 
-    onEnable () {
+    onEnable() {
         // check sprite frames
-        if (this.normalSprite) {
-            this.normalSprite.ensureLoadTexture();
+        if (this._normalSprite) {
+            this._normalSprite.ensureLoadTexture();
         }
-        if (this.hoverSprite) {
-            this.hoverSprite.ensureLoadTexture();
+        if (this._hoverSprite) {
+            this._hoverSprite.ensureLoadTexture();
         }
-        if (this.pressedSprite) {
-            this.pressedSprite.ensureLoadTexture();
+        if (this._pressedSprite) {
+            this._pressedSprite.ensureLoadTexture();
         }
-        if (this.disabledSprite) {
-            this.disabledSprite.ensureLoadTexture();
+        if (this._disabledSprite) {
+            this._disabledSprite.ensureLoadTexture();
         }
         //
         if (!CC_EDITOR) {
             this._registerEvent();
         } else {
             this.node.on('spriteframe-changed', function (comp) {
-                if (this.transition === Transition.SPRITE) {
-                    this.normalSprite = comp.spriteFrame;
+                if (this._transition === Transition.SPRITE) {
+                    this._normalSprite = comp.spriteFrame;
                 }
             }.bind(this));
         }
-    },
+    }
 
-    onDisable () {
+    onDisable() {
         this._resetState();
 
         if (!CC_EDITOR) {
-            this.node.off(cc.Node.EventType.TOUCH_START, this._onTouchBegan, this);
-            this.node.off(cc.Node.EventType.TOUCH_MOVE, this._onTouchMove, this);
-            this.node.off(cc.Node.EventType.TOUCH_END, this._onTouchEnded, this);
-            this.node.off(cc.Node.EventType.TOUCH_CANCEL, this._onTouchCancel, this);
+            this.node.off(cc.NodeUI.EventType.TOUCH_START, this._onTouchBegan, this);
+            this.node.off(cc.NodeUI.EventType.TOUCH_MOVE, this._onTouchMove, this);
+            this.node.off(cc.NodeUI.EventType.TOUCH_END, this._onTouchEnded, this);
+            this.node.off(cc.NodeUI.EventType.TOUCH_CANCEL, this._onTouchCancel, this);
 
-            this.node.off(cc.Node.EventType.MOUSE_ENTER, this._onMouseMoveIn, this);
-            this.node.off(cc.Node.EventType.MOUSE_LEAVE, this._onMouseMoveOut, this);
+            this.node.off(cc.NodeUI.EventType.MOUSE_ENTER, this._onMouseMoveIn, this);
+            this.node.off(cc.NodeUI.EventType.MOUSE_LEAVE, this._onMouseMoveOut, this);
         } else {
             this.node.off('spriteframe-changed');
         }
-    },
+    }
 
-    update (dt) {
-        let target = this.target;
-        if (this._transitionFinished) return;
-        if (this.transition !== Transition.COLOR && this.transition !== Transition.SCALE) return;
+    update(dt) {
+        let target = this._target;
+        if (this._transitionFinished) {
+            return;
+        }
 
-        this.time += dt;
+        if (this._transition !== Transition.COLOR && this._transition !== Transition.SCALE) {
+            return;
+        }
+
+        this._time += dt;
         let ratio = 1.0;
-        if (this.duration > 0) {
-            ratio = this.time / this.duration;
+        if (this._duration > 0) {
+            ratio = this._time / this._duration;
         }
 
         if (ratio >= 1) {
@@ -467,64 +575,67 @@ let Button = cc.Class({
             this._transitionFinished = true;
         }
 
-        if (this.transition === Transition.COLOR) {
-            target.color = this._fromColor.lerp(this._toColor, ratio);
+        let renderComp = target.getComponent(cc.RenderComponent);
+        if (this._transition === Transition.COLOR) {
+            renderComp.color = this._fromColor.lerp(this._toColor, ratio);
         } else if (this.transition === Transition.SCALE) {
-            target.scale = misc.lerp(this._fromScale, this._toScale, ratio);
+            // target.scale = lerp(this._fromScale, this._toScale, ratio);
+            target.scaleX = lerp(this._fromScale.x, this._toScale.x, ratio);
+            target.scaleY = lerp(this._fromScale.y, this._toScale.y, ratio);
         }
+    }
 
-    },
+    _registerEvent() {
+        this.node.on(cc.NodeUI.EventType.TOUCH_START, this._onTouchBegan, this);
+        this.node.on(cc.NodeUI.EventType.TOUCH_MOVE, this._onTouchMove, this);
+        this.node.on(cc.NodeUI.EventType.TOUCH_END, this._onTouchEnded, this);
+        this.node.on(cc.NodeUI.EventType.TOUCH_CANCEL, this._onTouchCancel, this);
 
-    _registerEvent () {
-        this.node.on(cc.Node.EventType.TOUCH_START, this._onTouchBegan, this);
-        this.node.on(cc.Node.EventType.TOUCH_MOVE, this._onTouchMove, this);
-        this.node.on(cc.Node.EventType.TOUCH_END, this._onTouchEnded, this);
-        this.node.on(cc.Node.EventType.TOUCH_CANCEL, this._onTouchCancel, this);
+        this.node.on(cc.NodeUI.EventType.MOUSE_ENTER, this._onMouseMoveIn, this);
+        this.node.on(cc.NodeUI.EventType.MOUSE_LEAVE, this._onMouseMoveOut, this);
+    }
 
-        this.node.on(cc.Node.EventType.MOUSE_ENTER, this._onMouseMoveIn, this);
-        this.node.on(cc.Node.EventType.MOUSE_LEAVE, this._onMouseMoveOut, this);
-    },
-
-    _getTargetSprite (target) {
+    _getTargetSprite(target) {
         let sprite = null;
         if (target) {
-            sprite = target.getComponent(cc.Sprite);
+            sprite = target.getComponent(cc.SpriteComponent);
         }
         return sprite;
-    },
+    }
 
-    _applyTarget () {
-        this._sprite = this._getTargetSprite(this.target);
-        if (this.target) {
-            this._originalScale = this.target.scale;
+    _applyTarget() {
+        this._sprite = this._getTargetSprite(this._target);
+        if (this._target) {
+            math.vec3.copy(this._originalScale, this.target._lscale);
         }
-    },
+    }
 
     // touch event handler
-    _onTouchBegan (event) {
-        if (!this.interactable || !this.enabledInHierarchy) return;
+    _onTouchBegan(event) {
+        if (!this._interactable || !this.enabledInHierarchy) return;
 
         this._pressed = true;
         this._updateState();
         event.stopPropagation();
-    },
+    }
 
-    _onTouchMove (event) {
-        if (!this.interactable || !this.enabledInHierarchy || !this._pressed) return;
+    _onTouchMove(event) {
+        if (!this._interactable || !this.enabledInHierarchy || !this._pressed) return;
         // mobile phone will not emit _onMouseMoveOut,
         // so we have to do hit test when touch moving
         let touch = event.touch;
         let hit = this.node._hitTest(touch.getLocation());
 
-        if (this.transition === Transition.SCALE && this.target) {
+        if (this._transition === Transition.SCALE && this._target) {
             if (hit) {
                 this._fromScale = this._originalScale;
-                this._toScale = this._originalScale * this.zoomScale;
+                math.vec3.scale(this._toScale, this._originalScale, this._zoomScale);
                 this._transitionFinished = false;
             } else {
-                this.time = 0;
+                this._time = 0;
                 this._transitionFinished = true;
-                this.target.scale = this._originalScale;
+                this._target.scaleX = this._originalScale.x;
+                this._target.scaleY = this._originalScale.y;
             }
         } else {
             let state;
@@ -536,54 +647,54 @@ let Button = cc.Class({
             this._applyTransition(state);
         }
         event.stopPropagation();
-    },
+    }
 
-    _onTouchEnded (event) {
-        if (!this.interactable || !this.enabledInHierarchy) return;
+    _onTouchEnded(event) {
+        if (!this._interactable || !this.enabledInHierarchy) return;
 
         if (this._pressed) {
-            cc.Component.EventHandler.emitEvents(this.clickEvents, event);
+            cc.Component.EventHandler.emitEvents(this._clickEvents, event);
             this.node.emit('click', this);
         }
         this._pressed = false;
         this._updateState();
         event.stopPropagation();
-    },
+    }
 
-    _onTouchCancel () {
-        if (!this.interactable || !this.enabledInHierarchy) return;
+    _onTouchCancel() {
+        if (!this._interactable || !this.enabledInHierarchy) return;
 
         this._pressed = false;
         this._updateState();
-    },
+    }
 
-    _onMouseMoveIn () {
+    _onMouseMoveIn() {
         if (this._pressed || !this.interactable || !this.enabledInHierarchy) return;
-        if (this.transition === Transition.SPRITE && !this.hoverSprite) return;
+        if (this._transition === Transition.SPRITE && !this._hoverSprite) return;
 
         if (!this._hovered) {
             this._hovered = true;
             this._updateState();
         }
-    },
+    }
 
-    _onMouseMoveOut () {
+    _onMouseMoveOut() {
         if (this._hovered) {
             this._hovered = false;
             this._updateState();
         }
-    },
+    }
 
     // state handler
-    _updateState () {
+    _updateState() {
         let state = this._getButtonState();
         this._applyTransition(state);
-        this._updateDisabledState();
-    },
+        // this._updateDisabledState();
+    }
 
-    _getButtonState () {
+    _getButtonState() {
         let state;
-        if (!this.interactable) {
+        if (!this._interactable) {
             state = 'disabled';
         }
         else if (this._pressed) {
@@ -596,54 +707,59 @@ let Button = cc.Class({
             state = 'normal';
         }
         return state;
-    },
+    }
 
-    _updateColorTransition (state) {
+    _updateColorTransition(state) {
         let color = this[state + 'Color'];
-        let target = this.target;
+        let target = this._target;
+
+        let renderComp = target.getComponent(cc.RenderComponent);
+        if (!renderComp) {
+            return;
+        }
 
         if (CC_EDITOR) {
-            target.color = color;
+            renderComp.color = color;
         }
         else {
-            this._fromColor = target.color.clone();
+            this._fromColor = renderComp.color.clone();
             this._toColor = color;
-            this.time = 0;
+            this._time = 0;
             this._transitionFinished = false;
         }
-    },
+    }
 
-    _updateSpriteTransition (state) {
+    _updateSpriteTransition(state) {
         let sprite = this[state + 'Sprite'];
         if (this._sprite && sprite) {
             this._sprite.spriteFrame = sprite;
         }
-    },
+    }
 
-    _updateScaleTransition (state) {
+    _updateScaleTransition(state) {
         if (state === 'pressed') {
             this._zoomUp();
         } else {
             this._zoomBack();
         }
-    },
+    }
 
-    _zoomUp () {
-        this._fromScale = this._originalScale;
-        this._toScale = this._originalScale * this.zoomScale;
-        this.time = 0;
+    _zoomUp() {
+        math.vec3.copy(this._fromScale, this._originalScale);
+        math.vec3.scale(this._toScale, this._originalScale, this._zoomScale);
+        this._time = 0;
         this._transitionFinished = false;
-    },
+    }
 
-    _zoomBack () {
-        this._fromScale = this.target.scale;
-        this._toScale = this._originalScale;
-        this.time = 0;
+    _zoomBack() {
+        math.vec3.copy(this._fromScale, this.target._lscale);
+        math.vec3.copy(this._toScale, this._originalScale);
+        this._time = 0;
         this._transitionFinished = false;
-    },
+    }
 
-    _applyTransition (state) {
-        let transition = this.transition;
+    _applyTransition(state) {
+        let transition = this._transition;
         if (transition === Transition.COLOR) {
             this._updateColorTransition(state);
         } else if (transition === Transition.SPRITE) {
@@ -651,30 +767,30 @@ let Button = cc.Class({
         } else if (transition === Transition.SCALE) {
             this._updateScaleTransition(state);
         }
-    },
+    }
 
-    _resizeNodeToTargetNode: CC_EDITOR && function () {
-        if (this.target) {
+    _resizeNodeToTargetNode() {
+        if (CC_EDITOR && this.target) {
             this.node.setContentSize(this.target.getContentSize());
         }
-    },
-
-    _updateDisabledState () {
-        if (this._sprite) {
-            if (this.enableAutoGrayEffect) {
-                if (!(this.transition === Transition.SPRITE && this.disabledSprite)) {
-                    if (!this.interactable) {
-                        this._sprite.setState(cc.Sprite.State.GRAY);
-                        return;
-                    }
-                }
-            }
-            this._sprite.setState(cc.Sprite.State.NORMAL);
-        }
     }
-});
 
-cc.Button = module.exports = Button;
+    // _updateDisabledState() {
+    //     if (this._sprite) {
+    //         if (this.enableAutoGrayEffect) {
+    //             if (!(this._transition === Transition.SPRITE && this._disabledSprite)) {
+    //                 if (!this._interactable) {
+    //                     this._sprite.setState(cc.SpriteComponent.State.GRAY);
+    //                     return;
+    //                 }
+    //             }
+    //         }
+    //         this._sprite.setState(cc.SpriteComponent.State.NORMAL);
+    //     }
+    // }
+}
+
+
 
 /**
  * !#en

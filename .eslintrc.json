@@ -18,8 +18,7 @@
     "es6": true,
     "mocha": true
   },
-  "plugins": [
-  ],
+  "plugins": [],
   "globals": {
     "cc": false,
     "wx": false,

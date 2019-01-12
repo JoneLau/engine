@@ -10,6 +10,10 @@ import MeshBuffer from './render/mesh-buffer';
 import { vfmt3D } from '../../2d/renderer/webgl/vertex-format'
 import Model from '../../renderer/scene/model';
 import InputAssembler from '../../renderer/core/input-assembler';
+import CanvasComponent from '../../3d/ui/CCCanvas';
+import SpriteComponent from '../../3d/ui/CCSprite';
+import LabelComponent from '../../3d/ui/CCLabel';
+import RenderComponent from '../../2d/renderable/CCRenderComponent';
 
 export default class UISystem {
     constructor() {
@@ -17,9 +21,9 @@ export default class UISystem {
         this._buffer = new MeshBuffer(this, vfmt3D);
         // internal states
         this._currScreen = null;
-        this._curMaterail = null;
-        this._curTexture = null;
-        this._curUserKey = 0;
+        this._currMaterail = null;
+        this._currSpriteFrame = null;
+        this._currUserKey = 0;
         this._dummyNode = null;
         this._batchedModels = [];
         // pools
@@ -35,6 +39,7 @@ export default class UISystem {
     addScreen(comp) {
         this._screens.push(comp);
         cc.director._renderSystem._scene.addView(comp._view);
+        CanvasComponent.views.push({ id: comp._view._id, comp: comp });
     }
 
     removeScreen(comp) {
@@ -42,11 +47,13 @@ export default class UISystem {
         if (idx !== -1) {
             this._screens.splice(idx, 1);
             cc.director._renderSystem._scene.removeView(comp._view);
+            CanvasComponent.views.splice(idx, 1);
         }
     }
 
     update(dt) {
         // this._screenRenderHelper.reset();
+        this.reset();
         this._renderScreens();
     }
 
@@ -77,22 +84,46 @@ export default class UISystem {
             this._currScreen = screen;
             this._buffer.reset();
             let view = screen._view;
-            let canvasWidth = cc.game.canvas.width;
-            let canvasHeight = cc.game.canvas.height;
+            // let canvasWidth = screen.designResolution.width;
+            // let canvasHeight = screen.designResolution.height;
             screen.node.getWorldRT(view._matView);
             mat4.invert(view._matView, view._matView);
-            mat4.ortho(view._matProj, 0, canvasWidth, 0, canvasHeight, -100, 100);
+            // let aspect = canvasWidth / canvasHeight;
+            let aspect = cc.game.canvas.width / cc.game.canvas.height;
+            // let orthoHeight = canvasHeight / 2;
+            let orthoHeight = cc.game.canvas.height / cc.view._scaleY / 2;
+            let x = orthoHeight * aspect;
+            let y = orthoHeight;
+            mat4.ortho(view._matProj,
+                -x, x, -y, y, 0, 4096
+            );
+
+            //mat4.ortho(view._matProj, 0, canvasWidth, 0, canvasHeight, -100, 100);
             mat4.mul(view._matViewProj, view._matProj, view._matView);
             // mat4.copy(view._matViewProj, view._matProj);
             mat4.invert(view._matInvViewProj, view._matViewProj);
             view._rect.x = view._rect.y = 0;
-            view._rect.w = canvasWidth;
-            view._rect.h = canvasHeight;
+            // view._rect.w = cc.game._renderer._device._gl.canvas.width;
+            // view._rect.h = cc.game._renderer._device._gl.canvas.height;
+            view._rect.w = cc.game.canvas.width;
+            view._rect.h = cc.game.canvas.height;
 
             this._walk(screen.node, (c) => {
-                let image = c.getComponent(cc.SpriteComponent);
-                if (image) {
+                let renderComp = c.getComponent(RenderComponent);
+                if (renderComp) {
+                    if (renderComp._viewID !== this._currScreen._view._id) {
+                        renderComp._viewID = this._currScreen._view._id;
+                    }
+                }
+
+                let image = c.getComponent(SpriteComponent);
+                if (image && image.enabledInHierarchy) {
                     this._commitComp(image);
+                }
+
+                let label = c.getComponent(LabelComponent);
+                if (label && label.enabledInHierarchy) {
+                    this._commitComp(label);
                 }
             });
 
@@ -102,16 +133,17 @@ export default class UISystem {
     }
 
     _commitComp(comp) {
-        if (this._curMaterail !== comp.material) {
+        if (this._currMaterail !== comp.material || this._currSpriteFrame !== comp.spriteFrame) {
             this._flush();
             this._dummyNode = comp.node;
-            this._curMaterail = comp.material;
+            this._currMaterail = comp.material;
+            this._currSpriteFrame = comp.spriteFrame;
         }
         comp.updateRenderData(this._buffer);
     }
 
     _flush() {
-        let material = this._curMaterail,
+        let material = this._currMaterail,
             buffer = this._buffer,
             indiceStart = buffer.indiceStart,
             indiceOffset = buffer.indiceOffset,
@@ -148,7 +180,7 @@ export default class UISystem {
         model.setEffect(material.effect);
         model.setInputAssembler(ia);
         model._viewID = this._currScreen._view._id;
-        model.setUserKey(this._curUserKey++);
+        model.setUserKey(this._currUserKey++);
 
         cc.director._renderSystem._scene.addModel(model);
 
@@ -159,8 +191,8 @@ export default class UISystem {
 
     reset() {
         for (let i = 0; i < this._batchedModels.length; ++i) {
-            let model = this._batchedModels.data[i];
-            cc.director._renderSystem._scene.removeModel(spriteBatch);
+            let model = this._batchedModels[i];
+            cc.director._renderSystem._scene.removeModel(model);
         }
 
         this._modelPool.reset();

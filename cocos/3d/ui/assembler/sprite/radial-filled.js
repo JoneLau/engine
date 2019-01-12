@@ -23,15 +23,11 @@
  THE SOFTWARE.
  ****************************************************************************/
 
-// const js = require('../../../../../platform/js');
-// const assembler = require('../2d/radial-filled');
-// const fillVertices3D = require('../../utils').fillVertices3D;
-import * as js from '../../../core/utils/js';
-import { vec3, mat4 } from '../../../core/vmath/index';
-import RenderData from '../../../3d/ui/renderData';
-import { fillVertices3D } from '../../../2d/renderer/webgl/assemblers/utils';
+// const dynamicAtlasManager = require('../../../../utils/dynamic-atlas/manager');
+import { fillVertices3D } from '../utils';
 
 const PI_2 = Math.PI * 2;
+
 let _vertPos = [cc.v2(0, 0), cc.v2(0, 0), cc.v2(0, 0), cc.v2(0, 0)];
 let _vertices = [0, 0, 0, 0];
 let _uvs = [0, 0, 0, 0, 0, 0, 0, 0];
@@ -45,7 +41,7 @@ function _calcInsectedPoints(left, right, bottom, top, center, angle, intersectP
     let sinAngle = Math.sin(angle);
     let cosAngle = Math.cos(angle);
     let tanAngle, cotAngle;
-    if (Math.cos(angle) !== 0) {
+    if (cosAngle !== 0) {
         tanAngle = sinAngle / cosAngle;
         //calculate right and left
         if ((left - center.x) * cosAngle > 0) {
@@ -62,7 +58,7 @@ function _calcInsectedPoints(left, right, bottom, top, center, angle, intersectP
 
     }
 
-    if (Math.sin(angle) !== 0) {
+    if (sinAngle !== 0) {
         cotAngle = cosAngle / sinAngle;
         //calculate  top and bottom
         if ((top - center.y) * sinAngle > 0) {
@@ -79,12 +75,10 @@ function _calcInsectedPoints(left, right, bottom, top, center, angle, intersectP
     }
 }
 
-function _calculateVertices(comp) {
-    let node = comp.node,
-        // width = node.width, height = node.height,
-        // appx = node.anchorX * width, appy = node.anchorY * height;
-        width = comp.size.width, height = comp.size.height,
-        appx = comp.anchor.x, appy = comp.anchor.y;
+function _calculateVertices(sprite) {
+    let node = sprite.node,
+        width = node.width, height = node.height,
+        appx = node.anchorX * width, appy = node.anchorY * height;
 
     let l = -appx, b = -appy,
         r = width - appx, t = height - appy;
@@ -95,7 +89,7 @@ function _calculateVertices(comp) {
     vertices[2] = r;
     vertices[3] = t;
 
-    let fillCenter = comp._fillCenter,
+    let fillCenter = sprite._fillCenter,
         cx = _center.x = Math.min(Math.max(0, fillCenter.x), 1) * (r - l) + l,
         cy = _center.y = Math.min(Math.max(0, fillCenter.y), 1) * (t - b) + b;
 
@@ -120,8 +114,8 @@ function _calculateVertices(comp) {
 }
 
 function _calculateUVs(spriteFrame) {
-    let atlasWidth = spriteFrame._texture.width;
-    let atlasHeight = spriteFrame._texture.height;
+    let atlasWidth = spriteFrame.width;
+    let atlasHeight = spriteFrame.height;
     let textureRect = spriteFrame._rect;
 
     let u0, u1, v0, v1;
@@ -215,25 +209,15 @@ function _generateUV(progressX, progressY, data, offset) {
     uv.v = py1 + (py2 - py1) * progressY;
 }
 
-export default class RadialFilled {
-    static createData(comp) {
-        let renderData = RenderData.add();
-        comp._renderData = renderData.data;
-        comp._renderDataPoolID = renderData.pooID;
-        renderData = comp._renderData;
-        return renderData;
-    }
+let radialFilled = {
+    useModel: false,
 
-    static removeData(comp) {
-        if (comp._renderData) {
-            RenderData.remove(comp._renderDataPoolID);
-            comp._renderDataPoolID = -1;
-            comp._renderData = null;
-        }
-    }
+    createData(sprite) {
+        return sprite.requestRenderData();
+    },
 
-    static updateRenderData(comp) {
-        let frame = comp.spriteFrame;
+    updateRenderData(sprite) {
+        let frame = sprite.spriteFrame;
 
         // TODO: Material API design and export from editor could affect the material activation process
         // need to update the logic here
@@ -241,18 +225,18 @@ export default class RadialFilled {
         //     if (!frame._original && dynamicAtlasManager) {
         //         dynamicAtlasManager.insertSpriteFrame(frame);
         //     }
-        //     if (comp._material._texture !== frame._texture) {
-        //         comp._activateMaterial();
+        //     if (sprite._material._texture !== frame._texture) {
+        //         sprite._activateMaterial();
         //     }
         // }
 
-        let renderData = comp._renderData;
+        let renderData = sprite._renderData;
         if (renderData && frame) {
             if (renderData.vertDirty || renderData.uvDirty) {
                 let data = renderData._data;
 
-                let fillStart = comp._fillStart;
-                let fillRange = comp._fillRange;
+                let fillStart = sprite._fillStart;
+                let fillRange = sprite._fillRange;
                 if (fillRange < 0) {
                     fillStart += fillRange;
                     fillRange = -fillRange;
@@ -267,7 +251,7 @@ export default class RadialFilled {
                 let fillEnd = fillStart + fillRange;
 
                 //build vertices
-                _calculateVertices(comp);
+                _calculateVertices(sprite);
                 //build uvs
                 _calculateUVs(frame);
 
@@ -333,12 +317,12 @@ export default class RadialFilled {
                 renderData.vertDirty = renderData.uvDirty = false;
             }
         }
-    }
+    },
 
-    static fillBuffers(comp, buffer) {
+    fillBuffers(comp, /*renderer*/buffer) {
         let node = comp.node,
             color = comp._color._val,
-            // buffer = renderer._meshBuffer3D,
+            /*buffer = renderer._meshBuffer3D,*/
             renderData = comp._renderData;
 
         let indiceOffset = buffer.indiceOffset,
@@ -350,5 +334,7 @@ export default class RadialFilled {
         for (let i = 0; i < renderData.dataLength; i++) {
             ibuf[indiceOffset + i] = vertexId + i;
         }
-    }
-}
+    },
+};
+
+export default radialFilled;

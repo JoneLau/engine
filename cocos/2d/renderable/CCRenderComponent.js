@@ -23,12 +23,13 @@
  THE SOFTWARE.
  ****************************************************************************/
 
-const Component = require('./CCComponent');
-const renderEngine = require('../renderer/render-engine');
-const RenderFlow = require('../renderer/render-flow');
-const BlendFactor = require('../platform/CCMacro').BlendFactor;
-const RenderData = renderEngine.RenderData;
-const gfx = renderEngine.gfx;
+import RenderableComponent from '../../3d/framework/renderable-component';
+import BlendFactor from '../../core/platform/CCMacro';
+import RenderData from '../../3d/ui/renderData';
+import gfx from '../../renderer/gfx/index';
+import { ccclass, property, menu, executionOrder, executeInEditMode } from '../../core/data/class-decorator';
+import { color4 } from '../../core/vmath/index';
+import macro from '../../core/platform/CCMacro';
 
 /**
  * !#en
@@ -39,186 +40,201 @@ const gfx = renderEngine.gfx;
  * @class RenderComponent
  * @extends Component
  */
-let RenderComponent = cc.Class({
-    name: 'RenderComponent',
-    extends: Component,
+@ccclass('cc.RenderComponent')
+export default class RenderComponent extends RenderableComponent {
+    _srcBlendFactor = macro.BlendFactor.SRC_ALPHA;
+    _dstBlendFactor = macro.BlendFactor.ONE_MINUS_SRC_ALPHA;
+    @property
+    _color = color4.create();
+    _renderData = null;
+    _allocedDatas = [];
+    _vertexFormat = null;
+    _toPostHandle = false;
+    _renderDataPoolID = -1;
+    _viewID = -1;
 
-    editor: CC_EDITOR && {
-        executeInEditMode: true,
-        disallowMultiple: true
-    },
+    /**
+   * !#en specify the source Blend Factor, this will generate a custom material object, please pay attention to the memory cost.
+   * !#zh 指定原图的混合模式，这会克隆一个新的材质对象，注意这带来的
+   * @property srcBlendFactor
+   * @type {macro.BlendFactor}
+   * @example
+   * sprite.srcBlendFactor = cc.macro.BlendFactor.ONE;
+   */
+    @property({
+        type: macro.BlendFactor
+    })
+    get srcBlendFactor() {
+        return this._srcBlendFactor;
+    }
+    set srcBlendFactor(value) {
+        if (this._srcBlendFactor === value) return;
+        this._srcBlendFactor = value;
+        this._updateBlendFunc(true);
+    }
 
-    properties: {
-        _srcBlendFactor: BlendFactor.SRC_ALPHA,
-        _dstBlendFactor: BlendFactor.ONE_MINUS_SRC_ALPHA,
+    /**
+     * !#en specify the destination Blend Factor.
+     * !#zh 指定目标的混合模式
+     * @property dstBlendFactor
+     * @type {macro.BlendFactor}
+     * @example
+     * sprite.dstBlendFactor = cc.macro.BlendFactor.ONE;
+     */
+    @property({
+        type: macro.BlendFactor
+    })
+    get dstBlendFactor() {
+        return this._dstBlendFactor;
+    }
 
-          /**
-         * !#en specify the source Blend Factor, this will generate a custom material object, please pay attention to the memory cost.
-         * !#zh 指定原图的混合模式，这会克隆一个新的材质对象，注意这带来的
-         * @property srcBlendFactor
-         * @type {macro.BlendFactor}
-         * @example
-         * sprite.srcBlendFactor = cc.macro.BlendFactor.ONE;
-         */
-        srcBlendFactor: {
-            get: function() {
-                return this._srcBlendFactor;
-            },
-            set: function(value) {
-                if (this._srcBlendFactor === value) return;
-                this._srcBlendFactor = value;
-                this._updateBlendFunc(true);
-            },
-            animatable: false,
-            type:BlendFactor,
-            tooltip: CC_DEV && 'i18n:COMPONENT.sprite.src_blend_factor'
-        },
+    set dstBlendFactor(value) {
+        if (this._dstBlendFactor === value) return;
+        this._dstBlendFactor = value;
+        this._updateBlendFunc(true);
+    }
 
-        /**
-         * !#en specify the destination Blend Factor.
-         * !#zh 指定目标的混合模式
-         * @property dstBlendFactor
-         * @type {macro.BlendFactor}
-         * @example
-         * sprite.dstBlendFactor = cc.macro.BlendFactor.ONE;
-         */
-        dstBlendFactor: {
-            get: function() {
-                return this._dstBlendFactor;
-            },
-            set: function(value) {
-                if (this._dstBlendFactor === value) return;
-                this._dstBlendFactor = value;
-                this._updateBlendFunc(true);
-            },
-            animatable: false,
-            type: BlendFactor,
-            tooltip: CC_DEV && 'i18n:COMPONENT.sprite.dst_blend_factor'
-        },
-    },
-    
-    ctor () {
-        this._material = null;
-        this._renderData = null;
-        this.__allocedDatas = [];
-        this._vertexFormat = null;
-        this._toPostHandle = false;
-        this._assembler = this.constructor._assembler;
-        this._postAssembler = this.constructor._postAssembler;
-    },
+    get color() {
+        return this._color;
+    }
 
-    onEnable () {
-        if (this.node._renderComponent) {
-            this.node._renderComponent.enabled = false;
-        }
-        this.node._renderComponent = this;
-        this.node._renderFlag |= RenderFlow.FLAG_RENDER | RenderFlow.FLAG_UPDATE_RENDER_DATA | RenderFlow.FLAG_COLOR;
-    },
-
-    onDisable () {
-        this.node._renderComponent = null;
-        this.disableRender();
-    },
-
-    onDestroy () {
-        for (let i = 0, l = this.__allocedDatas.length; i < l; i++) {
-            RenderData.free(this.__allocedDatas[i]);
-        }
-        this.__allocedDatas.length = 0;
-        this._material = null;
-        this._renderData = null;
-    },
-    
-    _canRender () {
-        return this._enabled;
-    },
-
-    markForUpdateRenderData (enable) {
-        if (enable && this._canRender()) {
-            this.node._renderFlag |= RenderFlow.FLAG_UPDATE_RENDER_DATA;
-        }
-        else if (!enable) {
-            this.node._renderFlag &= ~RenderFlow.FLAG_UPDATE_RENDER_DATA;
-        }
-    },
-
-    markForRender (enable) {
-        if (enable && this._canRender()) {
-            this.node._renderFlag |= RenderFlow.FLAG_RENDER;
-        }
-        else if (!enable) {
-            this.node._renderFlag &= ~RenderFlow.FLAG_RENDER;
-        }
-    },
-
-    markForCustomIARender (enable) {
-        if (enable && this._canRender()) {
-            this.node._renderFlag |= RenderFlow.FLAG_CUSTOM_IA_RENDER;
-        }
-        else if (!enable) {
-            this.node._renderFlag &= ~RenderFlow.FLAG_CUSTOM_IA_RENDER;
-        }
-    },
-
-    disableRender () {
-        this.node._renderFlag &= ~(RenderFlow.FLAG_RENDER | RenderFlow.FLAG_CUSTOM_IA_RENDER | RenderFlow.FLAG_UPDATE_RENDER_DATA | RenderFlow.FLAG_COLOR);
-    },
-
-    requestRenderData () {
-        let data = RenderData.alloc();
-        this.__allocedDatas.push(data);
-        return data;
-    },
-
-    destroyRenderData (data) {
-        let index = this.__allocedDatas.indexOf(data);
-        if (index !== -1) {
-            this.__allocedDatas.splice(index, 1);
-            RenderData.free(data);
-        }
-    },
-
-    _updateColor () {
-        let material = this._material;
-        if (material) {
-            material.color = this.node.color;
-            material.updateHash();
-
-            // reset flag when set color to material successfully
-            this.node._renderFlag &= ~RenderFlow.FLAG_COLOR;
-        }
-    },
-
-    getMaterial () {
-        return this._material;
-    },
-
-    _updateMaterial (material) {
-        this._material = material;
-
-        this._updateBlendFunc();
-        material.updateHash();
-    },
-        
-    _updateBlendFunc: function (updateHash) {
-        if (!this._material) {
+    set color(value) {
+        if (this._color === value) {
             return;
         }
 
-        var pass = this._material._mainTech.passes[0];
-        pass.setBlend(
-            gfx.BLEND_FUNC_ADD,
-            this._srcBlendFactor, this._dstBlendFactor,
-            gfx.BLEND_FUNC_ADD,
-            this._srcBlendFactor, this._dstBlendFactor
-        );
+        this._color = value;
+    }
 
-        if (updateHash) {
-            this._material.updateHash();
+    constructor() {
+        super();
+        this._assembler = this.constructor._assembler;
+        // this._postAssembler = this.constructor._postAssembler;
+    }
+
+    onEnable() {
+        // if (this.node._renderComponent) {
+        //     this.node._renderComponent.enabled = false;
+        // }
+        // this.node._renderComponent = this;
+        // this.node._renderFlag |= RenderFlow.FLAG_RENDER | RenderFlow.FLAG_UPDATE_RENDER_DATA | RenderFlow.FLAG_COLOR;
+    }
+
+    onDisable() {
+        // this.node._renderComponent = null;
+        // this.disableRender();
+    }
+
+    onDestroy() {
+        for (let i = 0, l = this._allocedDatas.length; i < l; i++) {
+            RenderData.free(this._allocedDatas[i]);
         }
-    },
-});
-RenderComponent._assembler = null;
-RenderComponent._postAssembler = null;
+        this._allocedDatas.length = 0;
+        this.material = null;
+        this._renderData = null;
+    }
 
-cc.RenderComponent = module.exports = RenderComponent;
+    // _canRender() {
+    //     return this._enabled;
+    // }
+
+    // markForUpdateRenderData(enable) {
+    //     // if (enable && this._canRender()) {
+    //     //     this.node._renderFlag |= RenderFlow.FLAG_UPDATE_RENDER_DATA;
+    //     // }
+    //     // else if (!enable) {
+    //     //     this.node._renderFlag &= ~RenderFlow.FLAG_UPDATE_RENDER_DATA;
+    //     // }
+    // }
+
+    // markForRender(enable) {
+    //     // if (enable && this._canRender()) {
+    //     //     this.node._renderFlag |= RenderFlow.FLAG_RENDER;
+    //     // }
+    //     // else if (!enable) {
+    //     //     this.node._renderFlag &= ~RenderFlow.FLAG_RENDER;
+    //     // }
+    // }
+
+    // markForCustomIARender(enable) {
+    //     // if (enable && this._canRender()) {
+    //     //     this.node._renderFlag |= RenderFlow.FLAG_CUSTOM_IA_RENDER;
+    //     // }
+    //     // else if (!enable) {
+    //     //     this.node._renderFlag &= ~RenderFlow.FLAG_CUSTOM_IA_RENDER;
+    //     // }
+    // }
+
+    // disableRender() {
+    //     // this.node._renderFlag &= ~(RenderFlow.FLAG_RENDER | RenderFlow.FLAG_CUSTOM_IA_RENDER | RenderFlow.FLAG_UPDATE_RENDER_DATA | RenderFlow.FLAG_COLOR);
+    // }
+
+    requestRenderData() {
+        let data = RenderData.add();
+        this._allocedDatas.push(data);
+        this._renderData = data.data;
+        this._renderDataPoolID = data.pooID;
+        return this._renderData;
+    }
+
+    destroyRenderData() {
+        // let index = this._allocedDatas.indexOf(data);
+        // if (index !== -1) {
+        //     this._allocedDatas.splice(index, 1);
+        //     RenderData.free(data);
+        // }
+        if (this._renderDataPoolID === -1) {
+            return;
+        }
+
+        RenderData.remove(this._renderDataPoolID);
+        this._renderDataPoolID = -1;
+        this._renderData = null;
+    }
+
+    _updateColor() {
+        let material = this.material;
+        if (material) {
+            // material.color = this.node.color;
+            material.setProperty('color', this._color);
+            // material.updateHash();
+
+            // reset flag when set color to material successfully
+            // this.node._renderFlag &= ~RenderFlow.FLAG_COLOR;
+        }
+    }
+
+    // getMaterial() {
+    //     return this.material;
+    // }
+
+    // _updateMaterial(material) {
+    //     this.material = material;
+
+    //     // this._updateBlendFunc();
+    //     // material.updateHash();
+    // }
+
+    _updateBlendFunc(updateHash) {
+        // if (!this.material) {
+        //     return;
+        // }
+
+        // var pass = this.material._mainTech.passes[0];
+        // pass.setBlend(
+        //     gfx.BLEND_FUNC_ADD,
+        //     this._srcBlendFactor, this._dstBlendFactor,
+        //     gfx.BLEND_FUNC_ADD,
+        //     this._srcBlendFactor, this._dstBlendFactor
+        // );
+
+        // if (updateHash) {
+        //     this.material.updateHash();
+        // }
+    }
+}
+
+RenderComponent._assembler = null;
+// RenderComponent._postAssembler = null;
+
+cc.RenderComponent = RenderComponent;

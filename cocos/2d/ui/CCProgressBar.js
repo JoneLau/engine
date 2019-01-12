@@ -24,8 +24,10 @@
  THE SOFTWARE.
  ****************************************************************************/
 
-const misc = require('../utils/misc');
-const Component = require('./CCComponent');
+import Component from '../../components/CCComponent';
+import { clamp01 } from '../../core/utils/misc';
+import { ccclass, menu, executionOrder, executeInEditMode, property } from '../../core/data/class-decorator';
+
 
 /**
  * !#en Enum for ProgressBar mode
@@ -64,7 +66,7 @@ var Mode = cc.Enum({
  * @extends Component
  * @example
  * // update progressBar
- * update: function (dt) {
+ * update(dt) {
  *     var progress = progressBar.progress;
  *     if (progress > 0) {
  *         progress += dt;
@@ -76,18 +78,139 @@ var Mode = cc.Enum({
  * }
  *
  */
-var ProgressBar = cc.Class({
-    name: 'cc.ProgressBar',
-    extends: Component,
+@ccclass('cc.ProgressBarComponent')
+@executionOrder(100)
+@menu('UI/ProgressBar')
+// @executeInEditMode
+export default class ProgressBarComponent extends Component {
+    @property
+    _barSprite = null;
+    @property
+    _mode = Mode.HORIZONTAL;
+    _N$totalLength = 1;
+    @property
+    _progress = 0.1;
+    @property
+    _reverse = false;
 
-    editor: CC_EDITOR && {
-        menu: 'i18n:MAIN_MENU.component.ui/ProgressBar',
-        help: 'i18n:COMPONENT.help_url.progressbar',
-    },
+    /**
+     * !#en The targeted Sprite which will be changed progressively.
+     * !#zh 用来显示进度条比例的 Sprite 对象。
+     * @property {Sprite} barSprite
+     */
+    @property({
+        type: cc.SpriteComponent
+    })
+    get barSprite() {
+        return this._barSprite;
+    }
 
-    _initBarSprite: function() {
-        if (this.barSprite) {
-            var entity = this.barSprite.node;
+    set barSprite(value) {
+        if (this._barSprite === value) {
+            return
+        }
+
+        this._barSprite = value;
+        this._initBarSprite();
+    }
+
+    /**
+     * !#en The progress mode, there are two modes supported now: horizontal and vertical.
+     * !#zh 进度条的模式
+     * @property {ProgressBar.Mode} mode
+     */
+    @property({
+        type: Mode
+    })
+    get mode() {
+        return this._mode;
+    }
+
+    set mode(value) {
+        if (this._mode === value) {
+            return;
+        }
+
+        this._mode = value;
+        if (this._barSprite) {
+            var entity = this._barSprite.node;
+            if (!entity) return;
+
+            var entitySize = entity.getContentSize();
+            if (this._mode === Mode.HORIZONTAL) {
+                this.totalLength = entitySize.width;
+            } else if (this._mode === Mode.VERTICAL) {
+                this.totalLength = entitySize.height;
+            } else if (this._mode === Mode.FILLED) {
+                this.totalLength = this._barSprite.fillRange;
+            }
+        }
+    }
+
+    /**
+     * !#en The total width or height of the bar sprite.
+     * !#zh 进度条实际的总长度
+     * @property {Number} totalLength - range[[0, Number.MAX_VALUE]]
+     */
+    @property
+    get totalLength() {
+        return this._N$totalLength;
+    }
+
+    set totalLength(value) {
+        if (this._mode === Mode.FILLED) {
+            value = clamp01(value);
+        }
+        this._N$totalLength = value;
+        this._updateBarStatus();
+    }
+
+    /**
+     * !#en The current progress of the bar sprite. The valid value is between 0-1.
+     * !#zh 当前进度值，该数值的区间是 0-1 之间。
+     * @property {Number} progress
+     */
+    @property
+    get progress() {
+        return this._progress;
+    }
+
+    set progress(value) {
+        if (this._progress === value) {
+            return
+        }
+
+        this._progress = value;
+        this._updateBarStatus();
+    }
+
+    /**
+     * !#en Whether reverse the progress direction of the bar sprite.
+     * !#zh 进度条是否进行反方向变化。
+     * @property {Boolean} reverse
+     */
+    @property
+    get reverse() {
+        return this._reverse;
+    }
+
+    set reverse(value) {
+        if (this._reverse === value) {
+            return;
+        }
+
+        this._reverse = value;
+        if (this._barSprite) {
+            this._barSprite.fillStart = 1 - this._barSprite.fillStart;
+        }
+        this._updateBarStatus();
+    }
+
+    static Mode = Mode;
+
+    _initBarSprite() {
+        if (this._barSprite) {
+            var entity = this._barSprite.node;
             if (!entity) return;
 
             var nodeSize = this.node.getContentSize();
@@ -95,36 +218,36 @@ var ProgressBar = cc.Class({
 
             var entitySize = entity.getContentSize();
 
-            if(entity.parent === this.node){
+            if (entity.parent === this.node) {
                 this.node.setContentSize(entitySize);
             }
 
-            if (this.barSprite.fillType === cc.Sprite.FillType.RADIAL) {
-                this.mode = Mode.FILLED;
+            if (this._barSprite.fillType === cc.SpriteComponent.FillType.RADIAL) {
+                this._mode = Mode.FILLED;
             }
 
             var barSpriteSize = entity.getContentSize();
-            if (this.mode === Mode.HORIZONTAL) {
+            if (this._mode === Mode.HORIZONTAL) {
                 this.totalLength = barSpriteSize.width;
             }
-            else if(this.mode === Mode.VERTICAL) {
+            else if (this._mode === Mode.VERTICAL) {
                 this.totalLength = barSpriteSize.height;
             }
             else {
-                this.totalLength = this.barSprite.fillRange;
+                this.totalLength = this._barSprite.fillRange;
             }
 
-            if(entity.parent === this.node){
+            if (entity.parent === this.node) {
                 var x = - nodeSize.width * nodeAnchor.x;
                 var y = 0;
                 entity.setPosition(cc.v2(x, y));
             }
         }
-    },
+    }
 
-    _updateBarStatus: function() {
-        if (this.barSprite) {
-            var entity = this.barSprite.node;
+    _updateBarStatus() {
+        if (this._barSprite) {
+            var entity = this._barSprite.node;
 
             if (!entity) return;
 
@@ -133,14 +256,14 @@ var ProgressBar = cc.Class({
             var entityPosition = entity.getPosition();
 
             var anchorPoint = cc.v2(0, 0.5);
-            var progress = misc.clamp01(this.progress);
+            var progress = clamp01(this._progress);
             var actualLenth = this.totalLength * progress;
             var finalContentSize;
             var totalWidth;
             var totalHeight;
-            switch (this.mode) {
+            switch (this._mode) {
                 case Mode.HORIZONTAL:
-                    if (this.reverse) {
+                    if (this._reverse) {
                         anchorPoint = cc.v2(1, 0.5);
                     }
                     finalContentSize = cc.size(actualLenth, entitySize.height);
@@ -148,7 +271,7 @@ var ProgressBar = cc.Class({
                     totalHeight = entitySize.height;
                     break;
                 case Mode.VERTICAL:
-                    if (this.reverse) {
+                    if (this._reverse) {
                         anchorPoint = cc.v2(0.5, 1);
                     } else {
                         anchorPoint = cc.v2(0.5, 0);
@@ -160,17 +283,17 @@ var ProgressBar = cc.Class({
             }
 
             //handling filled mode
-            if (this.mode === Mode.FILLED) {
-                if (this.barSprite.type !== cc.Sprite.Type.FILLED) {
+            if (this._mode === Mode.FILLED) {
+                if (this._barSprite.type !== cc.SpriteComponent.Type.FILLED) {
                     cc.warn('ProgressBar FILLED mode only works when barSprite\'s Type is FILLED!');
                 } else {
-                    if (this.reverse) {
+                    if (this._reverse) {
                         actualLenth = actualLenth * -1;
                     }
-                    this.barSprite.fillRange = actualLenth;
+                    this._barSprite.fillRange = actualLenth;
                 }
             } else {
-                if (this.barSprite.type !== cc.Sprite.Type.FILLED) {
+                if (this._barSprite.type !== cc.SpriteComponent.Type.FILLED) {
 
                     var anchorOffsetX = anchorPoint.x - entityAnchorPoint.x;
                     var anchorOffsetY = anchorPoint.y - entityAnchorPoint.y;
@@ -188,110 +311,6 @@ var ProgressBar = cc.Class({
 
 
         }
-    },
-
-    properties: {
-        /**
-         * !#en The targeted Sprite which will be changed progressively.
-         * !#zh 用来显示进度条比例的 Sprite 对象。
-         * @property {Sprite} barSprite
-         */
-        barSprite: {
-            default: null,
-            type: cc.Sprite,
-            tooltip: CC_DEV && 'i18n:COMPONENT.progress.bar_sprite',
-            notify: function() {
-                this._initBarSprite();
-            },
-            animatable: false
-        },
-
-        /**
-         * !#en The progress mode, there are two modes supported now: horizontal and vertical.
-         * !#zh 进度条的模式
-         * @property {ProgressBar.Mode} mode
-         */
-        mode: {
-            default: Mode.HORIZONTAL,
-            type: Mode,
-            tooltip: CC_DEV && 'i18n:COMPONENT.progress.mode',
-            notify: function() {
-                if (this.barSprite) {
-                    var entity = this.barSprite.node;
-                    if (!entity) return;
-
-                    var entitySize = entity.getContentSize();
-                    if (this.mode === Mode.HORIZONTAL) {
-                        this.totalLength = entitySize.width;
-                    } else if (this.mode === Mode.VERTICAL) {
-                        this.totalLength = entitySize.height;
-                    } else if (this.mode === Mode.FILLED) {
-                        this.totalLength = this.barSprite.fillRange;
-                    }
-                }
-            },
-            animatable: false
-        },
-
-        _N$totalLength: 1,
-        /**
-         * !#en The total width or height of the bar sprite.
-         * !#zh 进度条实际的总长度
-         * @property {Number} totalLength
-         */
-        totalLength: {
-            range: [0, Number.MAX_VALUE],
-            tooltip: CC_DEV && 'i18n:COMPONENT.progress.total_length',
-            get: function () {
-                return this._N$totalLength;
-            },
-            set: function(value) {
-                if (this.mode === Mode.FILLED) {
-                    value = misc.clamp01(value);
-                }
-                this._N$totalLength = value;
-                this._updateBarStatus();
-            }
-        },
-
-        /**
-         * !#en The current progress of the bar sprite. The valid value is between 0-1.
-         * !#zh 当前进度值，该数值的区间是 0-1 之间。
-         * @property {Number} progress
-         */
-        progress: {
-            default: 1,
-            type: 'Float',
-            range: [0, 1, 0.1],
-            slide: true,
-            tooltip: CC_DEV && 'i18n:COMPONENT.progress.progress',
-            notify: function() {
-                this._updateBarStatus();
-            }
-        },
-
-        /**
-         * !#en Whether reverse the progress direction of the bar sprite.
-         * !#zh 进度条是否进行反方向变化。
-         * @property {Boolean} reverse
-         */
-        reverse: {
-            default: false,
-            tooltip: CC_DEV && 'i18n:COMPONENT.progress.reverse',
-            notify: function() {
-                if (this.barSprite) {
-                    this.barSprite.fillStart = 1 - this.barSprite.fillStart;
-                }
-                this._updateBarStatus();
-            },
-            animatable: false
-        }
-    },
-
-    statics: {
-        Mode: Mode
     }
-});
+}
 
-
-cc.ProgressBar = module.exports = ProgressBar;

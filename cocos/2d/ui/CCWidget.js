@@ -24,7 +24,10 @@
  THE SOFTWARE.
  ****************************************************************************/
 
-var WidgetManager = require('../base-ui/CCWidgetManager');
+// var WidgetManager = require('../base-ui/CCWidgetManager');
+import WidgetManager from '../base-ui/CCWidgetManager';
+import Component from '../../components/CCComponent';
+import { ccclass, property, executeInEditMode, menu, help, disallowMultiple, executionOrder } from '../../core/data/class-decorator';
 
 /**
  * !#en Enum for Widget's alignment mode, indicating when the widget should refresh.
@@ -55,12 +58,12 @@ var WidgetManager = require('../base-ui/CCWidgetManager');
 var AlignMode = WidgetManager.AlignMode;
 
 var AlignFlags = WidgetManager._AlignFlags;
-var TOP     = AlignFlags.TOP;
-var MID     = AlignFlags.MID;
-var BOT     = AlignFlags.BOT;
-var LEFT    = AlignFlags.LEFT;
-var CENTER  = AlignFlags.CENTER;
-var RIGHT   = AlignFlags.RIGHT;
+var TOP = AlignFlags.TOP;
+var MID = AlignFlags.MID;
+var BOT = AlignFlags.BOT;
+var LEFT = AlignFlags.LEFT;
+var CENTER = AlignFlags.CENTER;
+var RIGHT = AlignFlags.RIGHT;
 var TOP_BOT = TOP | BOT;
 var LEFT_RIGHT = LEFT | RIGHT;
 
@@ -76,507 +79,479 @@ var LEFT_RIGHT = LEFT | RIGHT;
  * @class Widget
  * @extends Component
  */
-var Widget = cc.Class({
-    name: 'cc.Widget', extends: require('./CCComponent'),
+@ccclass('cc.WidgetComponent')
+@executionOrder(100)
+@menu('UI/Widget')
+@executeInEditMode
+export default class WidgetComponent extends Component {
+    /**
+     * !#zh: 对齐开关，由 AlignFlags 组成
+     *
+     * @property _alignFlags
+     * @type {Number}
+     * @default 0
+     * @private
+     */
+    _alignFlags = 0;
+    _wasAlignOnce = null;
+    @property
+    _target = null;
+    @property
+    _isAlignTop = false;
+    @property
+    _isAlignBottom = false;
+    @property
+    _isAlignLeft = false;
+    @property
+    _isAlignRight = false;
+    @property
+    _left = 0;
+    @property
+    _right = 0;
+    @property
+    _top = 0;
+    @property
+    _bottom = 0;
+    @property
+    _horizontalCenter = 0;
+    @property
+    _verticalCenter = 0;
+    @property
+    _isAbsLeft = true;
+    @property
+    _isAbsRight = true;
+    @property
+    _isAbsTop = true;
+    @property
+    _isAbsBottom = true;
+    @property
+    _isAbsHorizontalCenter = true;
+    @property
+    _isAbsVerticalCenter = true;
+    // original size before align
+    @property
+    _originalWidth = 0;
+    @property
+    _originalHeight = 0;
+    @property
+    _alignMode = AlignMode.ON_WINDOW_RESIZE;
 
-    editor: CC_EDITOR && {
-        menu: 'i18n:MAIN_MENU.component.ui/Widget',
-        help: 'i18n:COMPONENT.help_url.widget',
-        inspector: 'packages://inspector/inspectors/comps/ccwidget.js',
-        executeInEditMode: true,
-        disallowMultiple: true,
-    },
+    /**
+     * !#en Specifies an alignment target that can only be one of the parent nodes of the current node.
+     * The default value is null, and when null, indicates the current parent.
+     * !#zh 指定一个对齐目标，只能是当前节点的其中一个父节点，默认为空，为空时表示当前父节点。
+     * @property {Node} target
+     * @default null
+     */
+    @property({
+        type: cc.NodeUI
+    })
+    get target() {
+        return this._target;
+    }
 
-    properties: {
+    set target(value) {
+        this._target = value;
+        if (CC_EDITOR && !cc.engine._isPlaying && this.node._parent) {
+            // adjust the offsets to keep the size and position unchanged after target chagned
+            WidgetManager.updateOffsetsToStayPut(this);
+        }
+    }
 
-        /**
-         * !#en Specifies an alignment target that can only be one of the parent nodes of the current node.
-         * The default value is null, and when null, indicates the current parent.
-         * !#zh 指定一个对齐目标，只能是当前节点的其中一个父节点，默认为空，为空时表示当前父节点。
-         * @property {Node} target
-         * @default null
-         */
-        target: {
-            get: function () {
-                return this._target;
-            },
-            set: function (value) {
-                this._target = value;
-                if (CC_EDITOR && !cc.engine._isPlaying && this.node._parent) {
-                    // adjust the offsets to keep the size and position unchanged after target chagned
-                    WidgetManager.updateOffsetsToStayPut(this);
-                }
-            },
-            type: cc.Node,
-            tooltip: CC_DEV && 'i18n:COMPONENT.widget.target',
-        },
+    // ENABLE ALIGN ?
 
-        // ENABLE ALIGN ?
+    /**
+     * !#en Whether to align the top.
+     * !#zh 是否对齐上边。
+     * @property isAlignTop
+     * @type {Boolean}
+     * @default false
+     */
+    @property
+    get isAlignTop() {
+        return (this._alignFlags & TOP) > 0;
+    }
+    set isAlignTop(value) {
+        this._isAlignTop = value;
+        this._setAlign(TOP, value);
+    }
 
-        /**
-         * !#en Whether to align the top.
-         * !#zh 是否对齐上边。
-         * @property isAlignTop
-         * @type {Boolean}
-         * @default false
-         */
-        isAlignTop: {
-            get: function () {
-                return (this._alignFlags & TOP) > 0;
-            },
-            set: function (value) {
-                this._setAlign(TOP, value);
-            },
-            animatable: false,
-            tooltip: CC_DEV && 'i18n:COMPONENT.widget.align_top',
-        },
+    /**
+     * !#en Whether to align the bottom.
+     * !#zh 是否对齐下边。
+     * @property isAlignBottom
+     * @type {Boolean}
+     * @default false
+     */
+    @property
+    get isAlignBottom() {
+        return (this._alignFlags & BOT) > 0;
+    }
+    set isAlignBottom(value) {
+        this._setAlign(BOT, value);
+    }
 
-        /**
-         * !#en
-         * Vertically aligns the midpoint, This will open the other vertical alignment options cancel.
-         * !#zh
-         * 是否垂直方向对齐中点，开启此项会将垂直方向其他对齐选项取消。
-         * @property isAlignVerticalCenter
-         * @type {Boolean}
-         * @default false
-         */
-        isAlignVerticalCenter: {
-            get: function () {
-                return (this._alignFlags & MID) > 0;
-            },
-            set: function (value) {
-                if (value) {
-                    this.isAlignTop = false;
-                    this.isAlignBottom = false;
-                    this._alignFlags |= MID;
-                }
-                else {
-                    this._alignFlags &= ~MID;
-                }
-            },
-            animatable: false,
-            tooltip: CC_DEV && 'i18n:COMPONENT.widget.align_v_center',
-        },
+    /**
+     * !#en Whether to align the left.
+     * !#zh 是否对齐左边
+     * @property isAlignLeft
+     * @type {Boolean}
+     * @default false
+     */
+    @property
+    get isAlignLeft() {
+        return (this._alignFlags & LEFT) > 0;
+    }
+    set isAlignLeft(value) {
+        this._setAlign(LEFT, value);
+    }
 
-        /**
-         * !#en Whether to align the bottom.
-         * !#zh 是否对齐下边。
-         * @property isAlignBottom
-         * @type {Boolean}
-         * @default false
-         */
-        isAlignBottom: {
-            get: function () {
-                return (this._alignFlags & BOT) > 0;
-            },
-            set: function (value) {
-                this._setAlign(BOT, value);
-            },
-            animatable: false,
-            tooltip: CC_DEV && 'i18n:COMPONENT.widget.align_bottom',
-        },
+    /**
+     * !#en Whether to align the right.
+     * !#zh 是否对齐右边。
+     * @property isAlignRight
+     * @type {Boolean}
+     * @default false
+     */
+    @property
+    get isAlignRight() {
+        return (this._alignFlags & RIGHT) > 0;
+    }
+    set isAlignRight(value) {
+        this._setAlign(RIGHT, value);
+    }
 
-        /**
-         * !#en Whether to align the left.
-         * !#zh 是否对齐左边
-         * @property isAlignLeft
-         * @type {Boolean}
-         * @default false
-         */
-        isAlignLeft: {
-            get: function () {
-                return (this._alignFlags & LEFT) > 0;
-            },
-            set: function (value) {
-                this._setAlign(LEFT, value);
-            },
-            animatable: false,
-            tooltip: CC_DEV && 'i18n:COMPONENT.widget.align_left',
-        },
 
-        /**
-         * !#en
-         * Horizontal aligns the midpoint. This will open the other horizontal alignment options canceled.
-         * !#zh
-         * 是否水平方向对齐中点，开启此选项会将水平方向其他对齐选项取消。
-         * @property isAlignHorizontalCenter
-         * @type {Boolean}
-         * @default false
-         */
-        isAlignHorizontalCenter: {
-            get: function () {
-                return (this._alignFlags & CENTER) > 0;
-            },
-            set: function (value) {
-                if (value) {
-                    this.isAlignLeft = false;
-                    this.isAlignRight = false;
-                    this._alignFlags |= CENTER;
-                }
-                else {
-                    this._alignFlags &= ~CENTER;
-                }
-            },
-            animatable: false,
-            tooltip: CC_DEV && 'i18n:COMPONENT.widget.align_h_center',
-        },
 
-        /**
-         * !#en Whether to align the right.
-         * !#zh 是否对齐右边。
-         * @property isAlignRight
-         * @type {Boolean}
-         * @default false
-         */
-        isAlignRight: {
-            get: function () {
-                return (this._alignFlags & RIGHT) > 0;
-            },
-            set: function (value) {
-                this._setAlign(RIGHT, value);
-            },
-            animatable: false,
-            tooltip: CC_DEV && 'i18n:COMPONENT.widget.align_right',
-        },
+    /**
+     * !#en
+     * Vertically aligns the midpoint, This will open the other vertical alignment options cancel.
+     * !#zh
+     * 是否垂直方向对齐中点，开启此项会将垂直方向其他对齐选项取消。
+     * @property isAlignVerticalCenter
+     * @type {Boolean}
+     * @default false
+     */
+    @property
+    get isAlignVerticalCenter() {
+        return (this._alignFlags & MID) > 0;
+    }
+    set isAlignVerticalCenter(value) {
+        if (value) {
+            this.isAlignTop = false;
+            this.isAlignBottom = false;
+            this._alignFlags |= MID;
+        }
+        else {
+            this._alignFlags &= ~MID;
+        }
+    }
 
-        /**
-         * !#en
-         * Whether the stretched horizontally, when enable the left and right alignment will be stretched horizontally,
-         * the width setting is invalid (read only).
-         * !#zh
-         * 当前是否水平拉伸。当同时启用左右对齐时，节点将会被水平拉伸，此时节点的宽度只读。
-         * @property isStretchWidth
-         * @type {Boolean}
-         * @default false
-         * @readOnly
-         */
-        isStretchWidth: {
-            get: function () {
-                return (this._alignFlags & LEFT_RIGHT) === LEFT_RIGHT;
-            },
-            visible: false
-        },
-        /**
-         * !#en
-         * Whether the stretched vertically, when enable the left and right alignment will be stretched vertically,
-         * then height setting is invalid (read only)
-         * !#zh
-         * 当前是否垂直拉伸。当同时启用上下对齐时，节点将会被垂直拉伸，此时节点的高度只读。
-         * @property isStretchHeight
-         * @type {Boolean}
-         * @default false
-         * @readOnly
-         */
-        isStretchHeight: {
-            get: function () {
-                return (this._alignFlags & TOP_BOT) === TOP_BOT;
-            },
-            visible: false
-        },
+    /**
+     * !#en
+     * Horizontal aligns the midpoint. This will open the other horizontal alignment options canceled.
+     * !#zh
+     * 是否水平方向对齐中点，开启此选项会将水平方向其他对齐选项取消。
+     * @property isAlignHorizontalCenter
+     * @type {Boolean}
+     * @default false
+     */
+    @property
+    get isAlignHorizontalCenter() {
+        return (this._alignFlags & CENTER) > 0;
+    }
+    set isAlignHorizontalCenter(value) {
+        if (value) {
+            this.isAlignLeft = false;
+            this.isAlignRight = false;
+            this._alignFlags |= CENTER;
+        }
+        else {
+            this._alignFlags &= ~CENTER;
+        }
+    }
 
-        // ALIGN MARGINS
+    /**
+     * !#en
+     * Whether the stretched horizontally, when enable the left and right alignment will be stretched horizontally,
+     * the width setting is invalid (read only).
+     * !#zh
+     * 当前是否水平拉伸。当同时启用左右对齐时，节点将会被水平拉伸，此时节点的宽度只读。
+     * @property isStretchWidth
+     * @type {Boolean}
+     * @default false
+     * @readOnly
+     */
+    @property({
+        visible: false
+    })
+    get isStretchWidth() {
+        return (this._alignFlags & LEFT_RIGHT) === LEFT_RIGHT;
+    }
 
-        /**
-         * !#en
-         * The margins between the top of this node and the top of parent node,
-         * the value can be negative, Only available in 'isAlignTop' open.
-         * !#zh
-         * 本节点顶边和父节点顶边的距离，可填写负值，只有在 isAlignTop 开启时才有作用。
-         * @property top
-         * @type {Number}
-         * @default 0
-         */
-        top: {
-            get: function () {
-                return this._top;
-            },
-            set: function (value) {
-                this._top = value;
-            },
-            tooltip: CC_DEV && 'i18n:COMPONENT.widget.top',
-        },
+    /**
+     * !#en
+     * Whether the stretched vertically, when enable the left and right alignment will be stretched vertically,
+     * then height setting is invalid (read only)
+     * !#zh
+     * 当前是否垂直拉伸。当同时启用上下对齐时，节点将会被垂直拉伸，此时节点的高度只读。
+     * @property isStretchHeight
+     * @type {Boolean}
+     * @default false
+     * @readOnly
+     */
+    @property({
+        visible: false
+    })
+    get isStretchHeight() {
+        return (this._alignFlags & TOP_BOT) === TOP_BOT;
+    }
 
-        /**
-         * !#en
-         * The margins between the bottom of this node and the bottom of parent node,
-         * the value can be negative, Only available in 'isAlignBottom' open.
-         * !#zh
-         * 本节点底边和父节点底边的距离，可填写负值，只有在 isAlignBottom 开启时才有作用。
-         * @property bottom
-         * @type {Number}
-         * @default 0
-         */
-        bottom: {
-            get: function () {
-                return this._bottom;
-            },
-            set: function (value) {
-                this._bottom = value;
-            },
-            tooltip: CC_DEV && 'i18n:COMPONENT.widget.bottom',
-        },
+    // ALIGN MARGINS
 
-        /**
-         * !#en
-         * The margins between the left of this node and the left of parent node,
-         * the value can be negative, Only available in 'isAlignLeft' open.
-         * !#zh
-         * 本节点左边和父节点左边的距离，可填写负值，只有在 isAlignLeft 开启时才有作用。
-         * @property left
-         * @type {Number}
-         * @default 0
-         */
-        left: {
-            get: function () {
-                return this._left;
-            },
-            set: function (value) {
-                this._left = value;
-            },
-            tooltip: CC_DEV && 'i18n:COMPONENT.widget.left',
-        },
+    /**
+     * !#en
+     * The margins between the top of this node and the top of parent node,
+     * the value can be negative, Only available in 'isAlignTop' open.
+     * !#zh
+     * 本节点顶边和父节点顶边的距离，可填写负值，只有在 isAlignTop 开启时才有作用。
+     * @property top
+     * @type {Number}
+     * @default 0
+     */
+    @property
+    get top() {
+        return this._top;
+    }
+    set top(value) {
+        this._top = value;
+    }
 
-        /**
-         * !#en
-         * The margins between the right of this node and the right of parent node,
-         * the value can be negative, Only available in 'isAlignRight' open.
-         * !#zh
-         * 本节点右边和父节点右边的距离，可填写负值，只有在 isAlignRight 开启时才有作用。
-         * @property right
-         * @type {Number}
-         * @default 0
-         */
-        right: {
-            get: function () {
-                return this._right;
-            },
-            set: function (value) {
-                this._right = value;
-            },
-            tooltip: CC_DEV && 'i18n:COMPONENT.widget.right',
-        },
+    /**
+     * !#en
+     * The margins between the bottom of this node and the bottom of parent node,
+     * the value can be negative, Only available in 'isAlignBottom' open.
+     * !#zh
+     * 本节点底边和父节点底边的距离，可填写负值，只有在 isAlignBottom 开启时才有作用。
+     * @property bottom
+     * @type {Number}
+     * @default 0
+     */
+    @property
+    get bottom() {
+        return this._bottom;
+    }
+    set bottom(value) {
+        this._bottom = value;
+    }
 
-        /**
-         * !#en
-         * Horizontal aligns the midpoint offset value,
-         * the value can be negative, Only available in 'isAlignHorizontalCenter' open.
-         * !#zh 水平居中的偏移值，可填写负值，只有在 isAlignHorizontalCenter 开启时才有作用。
-         * @property horizontalCenter
-         * @type {Number}
-         * @default 0
-         */
-        horizontalCenter: {
-            get: function () {
-                return this._horizontalCenter;
-            },
-            set: function (value) {
-                this._horizontalCenter = value;
-            },
-            tooltip: CC_DEV && 'i18n:COMPONENT.widget.horizontal_center',
-        },
+    /**
+     * !#en
+     * The margins between the left of this node and the left of parent node,
+     * the value can be negative, Only available in 'isAlignLeft' open.
+     * !#zh
+     * 本节点左边和父节点左边的距离，可填写负值，只有在 isAlignLeft 开启时才有作用。
+     * @property left
+     * @type {Number}
+     * @default 0
+     */
+    @property
+    get left() {
+        return this._left;
+    }
+    set left(value) {
+        this._left = value;
+    }
 
-        /**
-         * !#en
-         * Vertical aligns the midpoint offset value,
-         * the value can be negative, Only available in 'isAlignVerticalCenter' open.
-         * !#zh 垂直居中的偏移值，可填写负值，只有在 isAlignVerticalCenter 开启时才有作用。
-         * @property verticalCenter
-         * @type {Number}
-         * @default 0
-         */
-        verticalCenter: {
-            get: function () {
-                return this._verticalCenter;
-            },
-            set: function (value) {
-                this._verticalCenter = value;
-            },
-            tooltip: CC_DEV && 'i18n:COMPONENT.widget.vertical_center',
-        },
+    /**
+     * !#en
+     * The margins between the right of this node and the right of parent node,
+     * the value can be negative, Only available in 'isAlignRight' open.
+     * !#zh
+     * 本节点右边和父节点右边的距离，可填写负值，只有在 isAlignRight 开启时才有作用。
+     * @property right
+     * @type {Number}
+     * @default 0
+     */
+    @property
+    get right() {
+        return this._right;
+    }
+    set right(value) {
+        this._right = value;
+    }
 
-        // PARCENTAGE OR ABSOLUTE
+    /**
+     * !#en
+     * Horizontal aligns the midpoint offset value,
+     * the value can be negative, Only available in 'isAlignHorizontalCenter' open.
+     * !#zh 水平居中的偏移值，可填写负值，只有在 isAlignHorizontalCenter 开启时才有作用。
+     * @property horizontalCenter
+     * @type {Number}
+     * @default 0
+     */
+    @property
+    get horizontalCenter() {
+        return this._horizontalCenter;
+    }
+    set horizontalCenter(value) {
+        this._horizontalCenter = value;
+    }
 
-        /**
-         * !#en If true, horizontalCenter is pixel margin, otherwise is percentage (0 - 1) margin.
-         * !#zh 如果为 true，"horizontalCenter" 将会以像素作为偏移值，反之为百分比（0 到 1）。
-         * @property isAbsoluteHorizontalCenter
-         * @type {Boolean}
-         * @default true
-         */
-        isAbsoluteHorizontalCenter: {
-            get: function () {
-                return this._isAbsHorizontalCenter;
-            },
-            set: function (value) {
-                this._isAbsHorizontalCenter = value;
-            },
-            animatable: false
-        },
+    /**
+     * !#en
+     * Vertical aligns the midpoint offset value,
+     * the value can be negative, Only available in 'isAlignVerticalCenter' open.
+     * !#zh 垂直居中的偏移值，可填写负值，只有在 isAlignVerticalCenter 开启时才有作用。
+     * @property verticalCenter
+     * @type {Number}
+     * @default 0
+     */
+    @property
+    get verticalCenter() {
+        return this._verticalCenter;
+    }
+    set verticalCenter(value) {
+        this._verticalCenter = value;
+    }
 
-        /**
-         * !#en If true, verticalCenter is pixel margin, otherwise is percentage (0 - 1) margin.
-         * !#zh 如果为 true，"verticalCenter" 将会以像素作为偏移值，反之为百分比（0 到 1）。
-         * @property isAbsoluteVerticalCenter
-         * @type {Boolean}
-         * @default true
-         */
-        isAbsoluteVerticalCenter: {
-            get: function () {
-                return this._isAbsVerticalCenter;
-            },
-            set: function (value) {
-                this._isAbsVerticalCenter = value;
-            },
-            animatable: false
-        },
+    /**
+     * !#en
+     * If true, top is pixel margin, otherwise is percentage (0 - 1) margin relative to the parent's height.
+     * !#zh
+     * 如果为 true，"top" 将会以像素作为边距，否则将会以相对父物体高度的百分比（0 到 1）作为边距。
+     * @property isAbsoluteTop
+     * @type {Boolean}
+     * @default true
+     */
+    @property
+    get isAbsoluteTop() {
+        return this._isAbsTop;
+    }
+    set isAbsoluteTop(value) {
+        this._isAbsTop = value;
+    }
 
-        /**
-         * !#en
-         * If true, top is pixel margin, otherwise is percentage (0 - 1) margin relative to the parent's height.
-         * !#zh
-         * 如果为 true，"top" 将会以像素作为边距，否则将会以相对父物体高度的百分比（0 到 1）作为边距。
-         * @property isAbsoluteTop
-         * @type {Boolean}
-         * @default true
-         */
-        isAbsoluteTop: {
-            get: function () {
-                return this._isAbsTop;
-            },
-            set: function (value) {
-                this._isAbsTop = value;
-            },
-            animatable: false
-        },
+    /**
+     * !#en
+     * If true, bottom is pixel margin, otherwise is percentage (0 - 1) margin relative to the parent's height.
+     * !#zh
+     * 如果为 true，"bottom" 将会以像素作为边距，否则将会以相对父物体高度的百分比（0 到 1）作为边距。
+     * @property isAbsoluteBottom
+     * @type {Boolean}
+     * @default true
+     */
+    @property
+    get isAbsoluteBottom() {
+        return this._isAbsBottom;
+    }
+    set isAbsoluteBottom(value) {
+        this._isAbsBottom = value;
+    }
 
-        /**
-         * !#en
-         * If true, bottom is pixel margin, otherwise is percentage (0 - 1) margin relative to the parent's height.
-         * !#zh
-         * 如果为 true，"bottom" 将会以像素作为边距，否则将会以相对父物体高度的百分比（0 到 1）作为边距。
-         * @property isAbsoluteBottom
-         * @type {Boolean}
-         * @default true
-         */
-        isAbsoluteBottom: {
-            get: function () {
-                return this._isAbsBottom;
-            },
-            set: function (value) {
-                this._isAbsBottom = value;
-            },
-            animatable: false
-        },
+    /**
+     * !#en
+     * If true, left is pixel margin, otherwise is percentage (0 - 1) margin relative to the parent's width.
+     * !#zh
+     * 如果为 true，"left" 将会以像素作为边距，否则将会以相对父物体宽度的百分比（0 到 1）作为边距。
+     * @property isAbsoluteLeft
+     * @type {Boolean}
+     * @default true
+     */
+    @property
+    get isAbsoluteLeft() {
+        return this._isAbsLeft;
+    }
+    set isAbsoluteLeft(value) {
+        this._isAbsLeft = value;
+    }
 
-        /**
-         * !#en
-         * If true, left is pixel margin, otherwise is percentage (0 - 1) margin relative to the parent's width.
-         * !#zh
-         * 如果为 true，"left" 将会以像素作为边距，否则将会以相对父物体宽度的百分比（0 到 1）作为边距。
-         * @property isAbsoluteLeft
-         * @type {Boolean}
-         * @default true
-         */
-        isAbsoluteLeft: {
-            get: function () {
-                return this._isAbsLeft;
-            },
-            set: function (value) {
-                this._isAbsLeft = value;
-            },
-            animatable: false
-        },
+    /**
+     * !#en
+     * If true, right is pixel margin, otherwise is percentage (0 - 1) margin relative to the parent's width.
+     * !#zh
+     * 如果为 true，"right" 将会以像素作为边距，否则将会以相对父物体宽度的百分比（0 到 1）作为边距。
+     * @property isAbsoluteRight
+     * @type {Boolean}
+     * @default true
+     */
+    @property
+    get isAbsoluteRight() {
+        return this._isAbsRight;
+    }
+    set isAbsoluteRight(value) {
+        this._isAbsRight = value;
+    }
 
-        /**
-         * !#en
-         * If true, right is pixel margin, otherwise is percentage (0 - 1) margin relative to the parent's width.
-         * !#zh
-         * 如果为 true，"right" 将会以像素作为边距，否则将会以相对父物体宽度的百分比（0 到 1）作为边距。
-         * @property isAbsoluteRight
-         * @type {Boolean}
-         * @default true
-         */
-        isAbsoluteRight: {
-            get: function () {
-                return this._isAbsRight;
-            },
-            set: function (value) {
-                this._isAbsRight = value;
-            },
-            animatable: false
-        },
+    /**
+     * !#en Specifies the alignment mode of the Widget, which determines when the widget should refresh.
+     * !#zh 指定 Widget 的对齐模式，用于决定 Widget 应该何时刷新。
+     * @property {Widget.AlignMode} alignMode
+     * @example
+     * widget.alignMode = cc.Widget.AlignMode.ON_WINDOW_RESIZE;
+     */
+    @property({
+        type: AlignMode
+    })
+    get alignMode() {
+        return this._alignMode;
+    }
 
-        /**
-         * !#en Specifies the alignment mode of the Widget, which determines when the widget should refresh.
-         * !#zh 指定 Widget 的对齐模式，用于决定 Widget 应该何时刷新。
-         * @property {Widget.AlignMode} alignMode
-         * @example
-         * widget.alignMode = cc.Widget.AlignMode.ON_WINDOW_RESIZE;
-         */
-        alignMode: {
-           default: AlignMode.ON_WINDOW_RESIZE,
-           type: AlignMode,
-           tooltip: CC_DEV && 'i18n:COMPONENT.widget.align_mode',
-        },
+    set alignMode(value) {
+        this._alignMode = value;
+    }
 
-        //
+    /**
+     * !#en If true, horizontalCenter is pixel margin, otherwise is percentage (0 - 1) margin.
+     * !#zh 如果为 true，"horizontalCenter" 将会以像素作为偏移值，反之为百分比（0 到 1）。
+     * @property isAbsoluteHorizontalCenter
+     * @type {Boolean}
+     * @default true
+     */
+    @property
+    get isAbsoluteHorizontalCenter() {
+        return this._isAbsHorizontalCenter;
+    }
 
-        _wasAlignOnce: {
-            default: undefined,
-            formerlySerializedAs: 'isAlignOnce',
-        },
+    set isAbsoluteHorizontalCenter(value) {
+        this._isAbsHorizontalCenter = value;
+    }
 
-        _target: null,
 
-        /**
-         * !#zh: 对齐开关，由 AlignFlags 组成
-         *
-         * @property _alignFlags
-         * @type {Number}
-         * @default 0
-         * @private
-         */
-        _alignFlags: 0,
+    /**
+     * !#en If true, verticalCenter is pixel margin, otherwise is percentage (0 - 1) margin.
+     * !#zh 如果为 true，"verticalCenter" 将会以像素作为偏移值，反之为百分比（0 到 1）。
+     * @property isAbsoluteVerticalCenter
+     * @type {Boolean}
+     * @default true
+     */
+    @property
+    get isAbsoluteVerticalCenter() {
+        return this._isAbsVerticalCenter;
+    }
+    set isAbsoluteVerticalCenter(value) {
+        this._isAbsVerticalCenter = value;
+    }
 
-        _left: 0,
-        _right: 0,
-        _top: 0,
-        _bottom: 0,
-        _verticalCenter: 0,
-        _horizontalCenter: 0,
-        _isAbsLeft: true,
-        _isAbsRight: true,
-        _isAbsTop: true,
-        _isAbsBottom: true,
-        _isAbsHorizontalCenter: true,
-        _isAbsVerticalCenter: true,
+    static AlignMode = AlignMode;
 
-        // original size before align
-        _originalWidth: 0,
-        _originalHeight: 0
-    },
-
-    statics: {
-        AlignMode: AlignMode,
-    },
-
-    onLoad: function () {
+    onLoad() {
         if (this._wasAlignOnce !== undefined) {
             // migrate for old version
             this.alignMode = this._wasAlignOnce ? AlignMode.ONCE : AlignMode.ALWAYS;
             this._wasAlignOnce = undefined;
         }
-    },
+    }
 
-    onEnable: function () {
+    onEnable() {
         WidgetManager.add(this);
-    },
+    }
 
-    onDisable: function () {
+    onDisable() {
         WidgetManager.remove(this);
-    },
+    }
 
-    _setAlign: function (flag, isAlign) {
+    _setAlign(flag, isAlign) {
         var current = (this._alignFlags & flag) > 0;
         if (isAlign == current) {
             return;
@@ -629,7 +604,7 @@ var Widget = cc.Class({
 
             this._alignFlags &= ~flag;
         }
-    },
+    }
 
     /**
      * !#en
@@ -647,10 +622,10 @@ var Widget = cc.Class({
      * widget.updateAlignment();
      * cc.log(widget.node.y); // changed
      */
-    updateAlignment: function () {
+    updateAlignment() {
         WidgetManager.updateAlignment(this.node);
-    },
-});
+    }
+}
 
 /**
  * !#en
@@ -666,20 +641,20 @@ var Widget = cc.Class({
  * @default false
  * @deprecated
  */
-Object.defineProperty(Widget.prototype, 'isAlignOnce', {
-    get () {
-        if (CC_DEBUG) {
-            cc.warn('`widget.isAlignOnce` is deprecated, use `widget.alignMode === cc.Widget.AlignMode.ONCE` instead please.');
-        }
-        return this.alignMode === AlignMode.ONCE;
-    },
-    set (value) {
-        if (CC_DEBUG) {
-            cc.warn('`widget.isAlignOnce` is deprecated, use `widget.alignMode = cc.Widget.AlignMode.*` instead please.');
-        }
-        this.alignMode = value ? AlignMode.ONCE : AlignMode.ALWAYS;
-    }
-});
+// Object.defineProperty(Widget.prototype, 'isAlignOnce', {
+//     get() {
+//         if (CC_DEBUG) {
+//             cc.warn('`widget.isAlignOnce` is deprecated, use `widget.alignMode === cc.Widget.AlignMode.ONCE` instead please.');
+//         }
+//         return this.alignMode === AlignMode.ONCE;
+//     }
+//     set(value) {
+//         if (CC_DEBUG) {
+//             cc.warn('`widget.isAlignOnce` is deprecated, use `widget.alignMode = cc.Widget.AlignMode.*` instead please.');
+//         }
+//         this.alignMode = value ? AlignMode.ONCE : AlignMode.ALWAYS;
+//     }
+// });
 
 
-cc.Widget = module.exports = Widget;
+// cc.Widget = module.exports = Widget;

@@ -24,21 +24,13 @@
  THE SOFTWARE.
  ****************************************************************************/
 // @ts-check
-// const misc = require('../utils/misc');
-// const NodeEvent = require('../CCNode').EventType;
-// const RenderComponent = require('./CCRenderComponent');
-// const RenderFlow = require('../renderer/render-flow');
-// const renderEngine = require('../renderer/render-engine');
-// const SpriteMaterial = renderEngine.SpriteMaterial;
-// const GraySpriteMaterial = renderEngine.GraySpriteMaterial;
 import misc from '../../core/utils/misc';
-import RenderComponent from '../../3d/framework/renderable-component';
+import RenderComponent from '../../2d/renderable/CCRenderComponent';
 import { vec2, vec3, mat4, color4 } from '../../core/vmath/index';
 import { ccclass, property, menu, executionOrder, executeInEditMode } from '../../core/data/class-decorator';
 import SpriteFrame from '../../assets/CCSpriteFrame';
 import Texture2D from '../../assets/texture-2d';
 import RenderData from './renderData';
-import Assembler from './assembler/sprite/index';
 
 /**
  * !#en Enum for sprite type.
@@ -58,24 +50,24 @@ var SpriteType = cc.Enum({
      * @property {Number} SLICED
      */
     SLICED: 1,
-    /**
-     * !#en The tiled type.
-     * !#zh 平铺类型
-     * @property {Number} TILED
-     */
-    TILED: 2,
+    // /**
+    //  * !#en The tiled type.
+    //  * !#zh 平铺类型
+    //  * @property {Number} TILED
+    //  */
+    // TILED: 2,
     /**
      * !#en The filled type.
      * !#zh 填充类型
      * @property {Number} FILLED
      */
     FILLED: 3,
-    /**
-     * !#en The mesh type.
-     * !#zh 以 Mesh 三角形组成的类型
-     * @property {Number} MESH
-     */
-    MESH: 4
+    // /**
+    //  * !#en The mesh type.
+    //  * !#zh 以 Mesh 三角形组成的类型
+    //  * @property {Number} MESH
+    //  */
+    // MESH: 4
 });
 
 /**
@@ -96,12 +88,12 @@ var FillType = cc.Enum({
      * @property {Number} VERTICAL
      */
     VERTICAL: 1,
-    /**
-     * !#en The radial fill.
-     * !#zh 径向填充
-     * @property {Number} RADIAL
-     */
-    RADIAL: 2,
+    // /**
+    //  * !#en The radial fill.
+    //  * !#zh 径向填充
+    //  * @property {Number} RADIAL
+    //  */
+    // RADIAL: 2,
 });
 
 /**
@@ -109,47 +101,46 @@ var FillType = cc.Enum({
  * !#zh 精灵尺寸调整模式
  * @enum Sprite.SizeMode
  */
-var SizeMode = cc.Enum({
-    /**
-     * !#en Use the customized node size.
-     * !#zh 使用节点预设的尺寸
-     * @property {Number} CUSTOM
-     */
-    CUSTOM: 0,
-    /**
-     * !#en Match the trimmed size of the sprite frame automatically.
-     * !#zh 自动适配为精灵裁剪后的尺寸
-     * @property {Number} TRIMMED
-     */
-    TRIMMED: 1,
-    /**
-     * !#en Match the raw size of the sprite frame automatically.
-     * !#zh 自动适配为精灵原图尺寸
-     * @property {Number} RAW
-     */
-    RAW: 2
-});
+// var SizeMode = cc.Enum({
+//     /**
+//      * !#en Use the customized node size.
+//      * !#zh 使用节点预设的尺寸
+//      * @property {Number} CUSTOM
+//      */
+//     CUSTOM: 0,
+//     /**
+//      * !#en Match the trimmed size of the sprite frame automatically.
+//      * !#zh 自动适配为精灵裁剪后的尺寸
+//      * @property {Number} TRIMMED
+//      */
+//     TRIMMED: 1,
+//     /**
+//      * !#en Match the raw size of the sprite frame automatically.
+//      * !#zh 自动适配为精灵原图尺寸
+//      * @property {Number} RAW
+//      */
+//     RAW: 2
+// });
 
-var State = cc.Enum({
-    /**
-     * !#en The normal state
-     * !#zh 正常状态
-     * @property {Number} NORMAL
-     */
-    NORMAL: 0,
-    /**
-     * !#en The gray state, all color will be modified to grayscale value.
-     * !#zh 灰色状态，所有颜色会被转换成灰度值
-     * @property {Number} GRAY
-     */
-    GRAY: 1
-});
-var _tmpMatrix = mat4.create();
+// var State = cc.Enum({
+//     /**
+//      * !#en The normal state
+//      * !#zh 正常状态
+//      * @property {Number} NORMAL
+//      */
+//     NORMAL: 0,
+//     /**
+//      * !#en The gray state, all color will be modified to grayscale value.
+//      * !#zh 灰色状态，所有颜色会被转换成灰度值
+//      * @property {Number} GRAY
+//      */
+//     GRAY: 1
+// });
 
 @ccclass('cc.SpriteComponent')
 @executionOrder(100)
 @menu('UI/Sprite')
-@executeInEditMode
+// @executeInEditMode
 export default class SpriteComponent extends RenderComponent {
     @property
     _spriteFrame = null;
@@ -157,64 +148,20 @@ export default class SpriteComponent extends RenderComponent {
     _type = SpriteType.SIMPLE;
     @property
     _fillType = FillType.HORIZONTAL;
-    @property
-    _sizeMode = SizeMode.TRIMMED;
+    // @property
+    // _sizeMode = SizeMode.TRIMMED;
     @property
     _fillCenter = cc.v2(0, 0);
     @property
     _fillStart = 0;
     @property
     _fillRange = 0;
-    @property
-    _isTrimmedMode = true;
-    _state = 0;
+    // @property
+    // _isTrimmedMode = true;
+    // _state = 0;
     @property
     _atlas = null;
-    @property
-    _color = cc.color(255, 255, 255, 255);
-    @property
-    _texture = null;
-    _renderData = null;
-    _renderDataPoolID = -1;
     _assembler = null;
-    @property
-    _size = cc.size(100, 100);
-    @property
-    _anchor = cc.v2(0.5, 0.5);
-    @property
-    get size() {
-        return this._size;
-    }
-
-    set size(value) {
-        this._size = value;
-    }
-
-    @property
-    get anchor() {
-        return this._anchor;
-    }
-
-    set anchor(value) {
-        this._anchor = value;
-    }
-    @property({
-        type: Texture2D
-    })
-    get texture() {
-        return this._texture;
-    }
-
-    set texture(value) {
-        this._texture = value;
-        if (this._spriteFrame) {
-            this.material.setProperty('mainTexture', this._texture);
-            this._initSpriteFrame();
-        }
-    }
-    // editorOnly = true;
-    // visible = true;
-    // animatable = false;
 
     /**
          * !#en The sprite frame of the sprite.
@@ -262,8 +209,6 @@ export default class SpriteComponent extends RenderComponent {
     }
     set type(value) {
         if (this._type !== value) {
-            // this.destroyRenderData(/*this._renderData*/);
-            // this._renderData = null;
             this._type = value;
             this._updateAssembler();
         }
@@ -297,23 +242,6 @@ export default class SpriteComponent extends RenderComponent {
             this._fillType = value;
             this._updateAssembler();
         }
-    }
-    /**
-     * !#en
-     * sprite color
-     * !#zh
-     * 精灵颜色
-     * @property color
-     * @type {cc.Color}
-     * @example
-     */
-    @property
-    get color() {
-        return this._color;
-    }
-
-    set color(value) {
-        this._color = value;
     }
 
     /**
@@ -393,108 +321,98 @@ export default class SpriteComponent extends RenderComponent {
      * sprite.trim = true;
      */
     get trim() {
-        return this._isTrimmedMode;
+        // return this._isTrimmedMode;
+        return false;
     }
 
     set trim(value) {
-        if (this._isTrimmedMode !== value) {
-            this._isTrimmedMode = value;
-            if ((this._type === SpriteType.SIMPLE || this._type === SpriteType.MESH) &&
-                this._renderData) {
-                this.markForUpdateRenderData(true);
-            }
+        // if (this._isTrimmedMode !== value) {
+        //     this._isTrimmedMode = value;
+        //     if ((this._type === SpriteType.SIMPLE || this._type === SpriteType.MESH) &&
+        //         this._renderData) {
+        //         this.markForUpdateRenderData(true);
+        //     }
+        // }
+        if (this._spriteFrame) {
+            this.node.setContentSize(this._spriteFrame.getOriginalSize());
         }
     }
 
 
-    /**
-     * !#en specify the size tracing mode.
-     * !#zh 精灵尺寸调整模式
-     * @property sizeMode
-     * @type {Sprite.SizeMode}
-     * @example
-     * sprite.sizeMode = cc.Sprite.SizeMode.CUSTOM;
-     */
-    get sizeMode() {
-        return this._sizeMode;
-    }
-    set sizeMode(value) {
-        // this._sizeMode = value;
-        // if (value !== SizeMode.CUSTOM) {
-        //     this._applySpriteSize();
-        // }
-    }
+    // /**
+    //  * !#en specify the size tracing mode.
+    //  * !#zh 精灵尺寸调整模式
+    //  * @property sizeMode
+    //  * @type {Sprite.SizeMode}
+    //  * @example
+    //  * sprite.sizeMode = cc.Sprite.SizeMode.CUSTOM;
+    //  */
+    // get sizeMode() {
+    //     return this._sizeMode;
+    // }
+    // set sizeMode(value) {
+    //     // this._sizeMode = value;
+    //     // if (value !== SizeMode.CUSTOM) {
+    //     //     this._applySpriteSize();
+    //     // }
+    // }
 
     static FillType = FillType;
     static Type = SpriteType;
-    static SizeMode = SizeMode;
-    static State = State;
+    // static SizeMode = SizeMode;
+    // static State = State;
 
-    /**
+    // /**
     //  * Change the state of sprite.
     //  * @method setState
-    //  * @see `Sprite.State`
-    //  * @param state {Sprite.State} NORMAL or GRAY State.
+    //  * @see `SpriteComponent.State`
+    //  * @param state {SpriteComponent.State} NORMAL or GRAY State.
     //  */
+    // getState() {
+    //     return this._state;
+    // }
+
     // setState(state) {
     //     if (this._state === state) return;
     //     this._state = state;
     //     this._activateMaterial();
     // }
 
-    // /**
-    //  * Gets the current state.
-    //  * @method getState
-    //  * @see `Sprite.State`
-    //  * @return {Sprite.State}
-    //  */
-    // getState() {
-    //     return this._state;
-    // }
-
-    onLoad() {
-
-    }
+    // onLoad() {}
 
     onEnable() {
-        // this._super();
-
-        if (!this._spriteFrame || !this._spriteFrame.textureLoaded()) {
-            // Do not render when sprite frame is not ready
-            // this.disableRender();
-            if (this._spriteFrame) {
-                this._spriteFrame.once('load', this._onTextureLoaded, this);
+        if (this._spriteFrame) {
+            if (!this._spriteFrame.textureLoaded()) {
+                // this._spriteFrame.once('load', this._onTextureLoaded, this);
                 this._spriteFrame.ensureLoadTexture();
-            } else {
-                this._spriteFrame = this._initSpriteFrame();
-            }
-
-            if (this._texture && this._spriteFrame.getTexture() !== this._texture) {
-                this._spriteFrame.setTexture(this._texture);
             }
         }
 
         this._updateAssembler();
         this._activateMaterial();
 
-        // this.node.on(NodeEvent.SIZE_CHANGED, this._onNodeSizeDirty, this);
-        // this.node.on(NodeEvent.ANCHOR_CHANGED, this._onNodeSizeDirty, this);
+        this.node.on(cc.NodeUI.EventType.SIZE_CHANGED, this._onNodeSizeDirty, this);
+        this.node.on(cc.NodeUI.EventType.ANCHOR_CHANGED, this._onNodeSizeDirty, this);
     }
 
     updateRenderData(buffer) {
+        if (!this._spriteFrame || !this.material) {
+            return;
+        }
+
         this._assembler.updateRenderData(this);
         this._assembler.fillBuffers(this, buffer);
     }
 
     onDestroy() {
-        this._assembler.removeData(this);
+        this.destroyRenderData();
     }
 
     onDisable() {
         // this._super();
 
-        // this.node.off(NodeEvent.SIZE_CHANGED, this._onNodeSizeDirty, this);
-        // this.node.off(NodeEvent.ANCHOR_CHANGED, this._onNodeSizeDirty, this);
+        this.node.off(cc.NodeUI.EventType.SIZE_CHANGED, this._onNodeSizeDirty, this);
+        this.node.off(cc.NodeUI.EventType.ANCHOR_CHANGED, this._onNodeSizeDirty, this);
     }
 
     _onNodeSizeDirty() {
@@ -503,7 +421,7 @@ export default class SpriteComponent extends RenderComponent {
     }
 
     _updateAssembler() {
-        let assembler = Assembler.getAssembler(this);
+        let assembler = SpriteComponent._assembler.getAssembler(this);
 
         if (this._assembler !== assembler) {
             this.destroyRenderData();
@@ -519,50 +437,29 @@ export default class SpriteComponent extends RenderComponent {
 
     _activateMaterial() {
         let spriteFrame = this._spriteFrame;
-
+        let material = this.material;
         // WebGL
         if (cc.game.renderType !== cc.game.RENDER_TYPE_CANVAS) {
-            // Get material
-            // let material;
-            // if (this._state === State.GRAY) {
-            //     if (!this._graySpriteMaterial) {
-            //         this._graySpriteMaterial = new GraySpriteMaterial();
-            //     }
-            //     material = this._graySpriteMaterial;
-            // }
-            // else {
-            //     if (!this._spriteMaterial) {
-            //         this._spriteMaterial = new SpriteMaterial();
-            //     }
-            //     material = this._spriteMaterial;
-            // }
-            if (!this.material) {
+            if (!material) {
                 this.material = cc.BuiltinResMgr['sprite-material'];
-                if (spriteFrame) {
-                    this.material.setProperty('mainTexture', spriteFrame._texture);
+                material = this.material;
+                if (spriteFrame && spriteFrame.textureLoaded()) {
+                    material.setProperty('mainTexture', spriteFrame);
+                    this.markForUpdateRenderData(true);
+                }
+            } else {
+                if (spriteFrame && spriteFrame.textureLoaded()) {
+                    let matTexture = material.effect && material.effect.getProperty('mainTexture');
+                    if (matTexture !== spriteFrame) {
+                        material.setProperty('mainTexture', spriteFrame);
+                        this.markForUpdateRenderData(true);
+                    }
                 }
             }
-            // // Set texture
-            // if (spriteFrame && spriteFrame.textureLoaded()) {
-            //     let texture = spriteFrame.getTexture();
-            //     if (material.texture !== texture) {
-            //         material.texture = texture;
-            //         this._activateMaterial(material);
-            //     }
-            //     else if (material !== this._material) {
-            //         this._activateMaterial(material);
-            //     }
-            //     if (this._renderData) {
-            //         this._renderData.material = material;
-            //     }
 
-            //     this.node._renderFlag |= RenderFlow.FLAG_COLOR;
-            //     this.markForUpdateRenderData(true);
-            //     // this.markForRender(true);
-            // }
-            // else {
-            //     this.disableRender();
-            // }
+            if (this._renderData) {
+                this._renderData.material = material;;
+            }
         }
         else {
             this.markForUpdateRenderData(true);
@@ -615,46 +512,32 @@ export default class SpriteComponent extends RenderComponent {
         // }
     }
 
-    _applySpriteSize() {
-        if (this._spriteFrame) {
-            if (SizeMode.RAW === this._sizeMode) {
-                var size = this._spriteFrame.getOriginalSize();
-                this.node.size(size);
-                // hack
-                this._size.width = size.width;
-                this._size.height = size.height;
-                // this.node.setContentSize(size);
-            } else if (SizeMode.TRIMMED === this._sizeMode) {
-                var rect = this._spriteFrame.getRect();
-                // hack
-                this._size.width = rect.width;
-                this._size.height = rect.height;
-                // this.node.size(ccclass.size(rect.width, rect.height));
-                // this.node.setContentSize(rect.width, rect.height);
-            }
+    // _applySpriteSize() {
+    //     if (this._spriteFrame) {
+    //         if (SizeMode.RAW === this._sizeMode) {
+    //             var size = this._spriteFrame.getOriginalSize();
+    //             this.node.setContentSize(size);
+    //         } else if (SizeMode.TRIMMED === this._sizeMode) {
+    //             var rect = this._spriteFrame.getRect();
+    //             this.node.setContentSize(rect.width, rect.height);
+    //         }
 
-            // this._activateMaterial();
-        }
-    }
+    //         this._activateMaterial();
+    //     }
+    // }
 
-    destroyRenderData(data) {
-        if (this._assembler) {
-            this._assembler.removeData(this);
-        }
-    }
+    // _onTextureLoaded() {
+    //     if (!this.isValid) {
+    //         return;
+    //     }
 
-    _onTextureLoaded() {
-        if (!this.isValid) {
-            return;
-        }
-
-        this._applySpriteSize();
-    }
+    //     this._applySpriteSize();
+    // }
 
     _applySpriteFrame(oldFrame) {
-        if (oldFrame && oldFrame.off) {
-            oldFrame.off('load', this._onTextureLoaded, this);
-        }
+        // if (oldFrame && oldFrame.off) {
+        //     oldFrame.off('load', this._onTextureLoaded, this);
+        // }
 
         var spriteFrame = this._spriteFrame;
         // if (!spriteFrame || (this._material && this._material._texture) !== (spriteFrame && spriteFrame._texture)) {
@@ -663,19 +546,20 @@ export default class SpriteComponent extends RenderComponent {
         // }
 
         if (spriteFrame) {
-            if (!oldFrame || spriteFrame._texture !== oldFrame._texture) {
-                this.material.setProperty('mainTexture', spriteFrame._texture);
+            if (!oldFrame || spriteFrame !== oldFrame) {
+                // this.material.setProperty('mainTexture', spriteFrame);
                 if (spriteFrame.textureLoaded()) {
-                    this._onTextureLoaded(null);
+                    // this._onTextureLoaded();
+                    this._activateMaterial();
                 }
                 else {
-                    spriteFrame.once('load', this._onTextureLoaded, this);
+                    // spriteFrame.once('load', this._onTextureLoaded, this);
                     spriteFrame.ensureLoadTexture();
                 }
             }
-            else {
-                this._applySpriteSize();
-            }
+            // else {
+            //     this._applySpriteSize();
+            // }
         }
 
         if (CC_EDITOR) {
@@ -684,24 +568,11 @@ export default class SpriteComponent extends RenderComponent {
         }
     }
 
-    // hack
-    _initSpriteFrame() {
-        let spriteFrame = this._spriteFrame;
-        if (!spriteFrame) {
-            spriteFrame = new SpriteFrame();
-        }
-        let texture = this._texture;
-        if (!texture) {
-            texture = cc.BuiltinResMgr['white-texture'];
-        } else if (spriteFrame._texture !== this._texture) {
-            spriteFrame.setTexture(texture);
-        }
+    // _resized() {
+    //     if (!CC_EDITOR) {
+    //         return;
+    //     }
 
-        spriteFrame._textureLoadedCallback();
-        return spriteFrame;
-    }
-
-    // _resized: CC_EDITOR && function () {
     //     if (this._spriteFrame) {
     //         var actualSize = this.node.getContentSize();
     //         var expectedW = actualSize.width;
@@ -721,7 +592,7 @@ export default class SpriteComponent extends RenderComponent {
     //             this._sizeMode = SizeMode.CUSTOM;
     //         }
     //     }
-    // },
+    // }
 }
 
 // if (CC_EDITOR) {

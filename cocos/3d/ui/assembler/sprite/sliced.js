@@ -1,7 +1,7 @@
 /****************************************************************************
  Copyright (c) 2017-2018 Xiamen Yaji Software Co., Ltd.
 
- https://www.cocos.com/
+ http://www.cocos.com
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated engine source code (the "Software"), a limited,
@@ -23,42 +23,28 @@
  THE SOFTWARE.
  ****************************************************************************/
 
-// const js = require('../../../../../platform/js');
-// const assembler = require('../2d/sliced');
-import * as js from '../../../core/utils/js';
-import { vec3, mat4 } from '../../../core/vmath/index';
-import RenderData from '../../../3d/ui/renderData';
+// const dynamicAtlasManager = require('../../../utils/dynamic-atlas/manager');
+import { vec3 } from '../../../../core/vmath/index';
 
-let vec3_temp = vec3.create();
-let matrix = mat4.create();
+const vec3_temp = vec3.create();
 
-export default class Sliced {
-    static type = 'Sliced';
+let sliced = {
+    useModel: false,
 
-    static createData(comp) {
-        let renderData = RenderData.add();
-        comp._renderData = renderData.data;
-        comp._renderDataPoolID = renderData.pooID;
-        renderData = comp._renderData;
+    createData(sprite) {
+        let renderData = sprite.requestRenderData();
         // 0-4 for local verts
         // 5-20 for world verts
-        renderData.dataLength = 20;
+        // renderData.dataLength = 20;
+        renderData.dataLength = 16;
 
         renderData.vertexCount = 16;
         renderData.indiceCount = 54;
         return renderData;
-    }
+    },
 
-    static removeData(comp) {
-        if (comp._renderData) {
-            RenderData.remove(comp._renderDataPoolID);
-            comp._renderDataPoolID = -1;
-            comp._renderData = null;
-        }
-    }
-
-    static updateRenderData(comp, batchData) {
-        let frame = comp.spriteFrame;
+    updateRenderData(sprite, batchData) {
+        let frame = sprite.spriteFrame;
 
         // TODO: Material API design and export from editor could affect the material activation process
         // need to update the logic here
@@ -66,30 +52,29 @@ export default class Sliced {
         //     if (!frame._original && dynamicAtlasManager) {
         //         dynamicAtlasManager.insertSpriteFrame(frame);
         //     }
-        //     if (comp._material._texture !== frame._texture) {
-        //         comp._activateMaterial();
+        //     if (sprite._material._texture !== frame._texture) {
+        //         sprite._activateMaterial();
         //     }
         // }
 
-        let renderData = comp._renderData;
+        let renderData = sprite._renderData;
         if (renderData && frame) {
             let vertDirty = renderData.vertDirty;
             if (vertDirty) {
-                this.updateVerts(comp);
-                this.updateWorldVerts(comp);
+                this.updateVerts(sprite);
+                // this.updateWorldVerts(sprite);
             }
         }
-    }
+    },
 
-    static updateVerts(comp) {
-        let renderData = comp._renderData,
+    updateVerts(sprite) {
+        let renderData = sprite._renderData,
             data = renderData._data,
-            // node = comp.node,
-            // TODO: hack
-            width = comp.size.width, height = comp.size.height,
-            appx = comp.anchor.x * width, appy = comp.anchor.y * height;
+            node = sprite.node,
+            width = node.width, height = node.height,
+            appx = node.anchorX * width, appy = node.anchorY * height;
 
-        let frame = comp.spriteFrame;
+        let frame = sprite.spriteFrame;
         let leftWidth = frame.insetLeft;
         let rightWidth = frame.insetRight;
         let topHeight = frame.insetTop;
@@ -104,36 +89,52 @@ export default class Sliced {
         sizableWidth = sizableWidth < 0 ? 0 : sizableWidth;
         sizableHeight = sizableHeight < 0 ? 0 : sizableHeight;
 
-        data[0].x = -appx;
-        data[0].y = -appy;
-        data[1].x = leftWidth * xScale - appx;
-        data[1].y = bottomHeight * yScale - appy;
-        data[2].x = data[1].x + sizableWidth;
-        data[2].y = data[1].y + sizableHeight;
-        data[3].x = width - appx;
-        data[3].y = height - appy;
+        let value = [
+            cc.v3(-appx, -appy, 0),
+            cc.v3(leftWidth * xScale - appx, bottomHeight * yScale - appy, 0),
+            cc.v3(leftWidth * xScale - appx + sizableWidth, bottomHeight * yScale - appy + sizableHeight, 0),
+            cc.v3(width - appx, height - appy, 0)
+        ];
+
+        for (let row = 0; row < 4; ++row) {
+            let rowD = value[row];
+            for (let col = 0; col < 4; ++col) {
+                let colD = value[col];
+                let world = data[row * 4 + col];
+                vec3.set(world, colD.x, rowD.y, 0);
+                // vec3.transformMat4(world, vec3_temp, matrix);
+            }
+        }
+
+        // data[0].x = -appx;
+        // data[0].y = -appy;
+        // data[1].x = leftWidth * xScale - appx;
+        // data[1].y = bottomHeight * yScale - appy;
+        // data[2].x = data[1].x + sizableWidth;
+        // data[2].y = data[1].y + sizableHeight;
+        // data[3].x = width - appx;
+        // data[3].y = height - appy;
 
         renderData.vertDirty = false;
-    }
+    },
 
-    static fillBuffers(comp, buffer) {
-        if (!comp.spriteFrame || !comp._renderData) {
-            return
-        }
+    fillBuffers(sprite, /*renderer*/buffer) {
         // if (renderer.worldMatDirty) {
-        this.updateWorldVerts(comp);
+        this.updateWorldVerts(sprite);
         // }
 
-        let renderData = comp._renderData,
-            color = comp._color._val,
+        let renderData = sprite._renderData,
+            node = sprite.node,
+            color = sprite._color._val,
             data = renderData._data;
 
-        let vertexOffset = buffer.byteOffset >> 2,
+        let /*buffer = is3DNode ? renderer._meshBuffer3D : renderer._meshBuffer,*/
+            vertexOffset = buffer.byteOffset >> 2,
             vertexCount = renderData.vertexCount,
             indiceOffset = buffer.indiceOffset,
             vertexId = buffer.vertexOffset;
 
-        let uvSliced = comp.spriteFrame.uvSliced;
+        let uvSliced = sprite.spriteFrame.uvSliced;
 
         buffer.request(vertexCount, renderData.indiceCount);
 
@@ -142,9 +143,11 @@ export default class Sliced {
             uintbuf = buffer._uintVData,
             ibuf = buffer._iData;
 
-        for (let i = 4; i < 20; ++i) {
+        // for (let i = 4; i < 20; ++i) {
+        for (let i = 0; i < 16; ++i) {
             let vert = data[i];
-            let uvs = uvSliced[i - 4];
+            // let uvs = uvSliced[i - 4];
+            let uvs = uvSliced[i];
 
             vbuf[vertexOffset++] = vert.x;
             vbuf[vertexOffset++] = vert.y;
@@ -165,12 +168,14 @@ export default class Sliced {
                 ibuf[indiceOffset++] = start + 4;
             }
         }
-    }
+    },
 
-    static updateWorldVerts(comp) {
-        let data = comp._renderData._data;
+    updateWorldVerts(sprite) {
+        let node = sprite.node,
+            data = sprite._renderData._data;
 
-        comp.node.getWorldMatrix(matrix);
+        // node._updateWorldMatrix();
+        // let matrix = node._worldMatrix;
         for (let row = 0; row < 4; ++row) {
             let rowD = data[row];
             for (let col = 0; col < 4; ++col) {
@@ -178,8 +183,10 @@ export default class Sliced {
                 let world = data[4 + row * 4 + col];
 
                 vec3.set(vec3_temp, colD.x, rowD.y, 0);
-                vec3.transformMat4(world, vec3_temp, matrix);
+                // vec3.transformMat4(world, vec3_temp, matrix);
             }
         }
-    }
-}
+    },
+};
+
+export default sliced;
