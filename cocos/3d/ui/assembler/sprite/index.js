@@ -24,7 +24,7 @@
  ****************************************************************************/
 
 // const Sprite = require('../../../../components/CCSprite');
-import SpriteComponent from '../../CCSprite';
+import SpriteComponent from '../../components/sprite-component';
 
 const SpriteType = SpriteComponent.Type;
 const FillType = SpriteComponent.FillType;

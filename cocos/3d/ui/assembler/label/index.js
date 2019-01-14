@@ -26,7 +26,7 @@
 // const Label = require('../../../../components/CCLabel');
 // const ttfAssembler = require('./ttf');
 // const bmfontAssembler = require('./bmfont');
-import LabelComponent from '../../CCLabel';
+import LabelComponent from '../../components/label-component';
 import ttfAssembler from './ttf';
 import bmfontAssembler from './bmfont';
 

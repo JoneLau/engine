@@ -48,7 +48,7 @@ export default class Size extends ValueType {
      * @param {Number|Size} width
      * @param {Number} [height]
      */
-    constructor (width, height) {
+    constructor(width, height) {
         super();
         if (width && typeof width === 'object') {
             height = width.height;
@@ -72,7 +72,7 @@ export default class Size extends ValueType {
      * @default new Size(0, 0)
      * @static
      */
-    static get ZERO () {
+    static get ZERO() {
         return new Size(0.0, 0.0);
     }
 
@@ -85,7 +85,7 @@ export default class Size extends ValueType {
      * var a = new cc.size(10, 10);
      * a.clone();// return Size {width: 0, height: 0};
      */
-    clone () {
+    clone() {
         return new Size(this.width, this.height);
     }
 
@@ -99,7 +99,7 @@ export default class Size extends ValueType {
      * var a = new cc.size(10, 10);
      * a.equals(new cc.size(10, 10));// return true;
      */
-    equals (other) {
+    equals(other) {
         return other &&
             this.width === other.width &&
             this.height === other.height;
@@ -123,7 +123,7 @@ export default class Size extends ValueType {
      *    a.lerp(b, dt * 0.1, c);
      * }
      */
-    lerp (to, ratio, out) {
+    lerp(to, ratio, out) {
         out = out || new Size();
         var width = this.width;
         var height = this.height;
@@ -132,7 +132,7 @@ export default class Size extends ValueType {
         return out;
     }
 
-    set (source) {
+    set(source) {
         this.width = source.width;
         this.height = source.height;
     }
@@ -146,12 +146,12 @@ export default class Size extends ValueType {
      * var a = new cc.size(10, 10);
      * a.toString();// return "(10.00, 10.00)";
      */
-    toString () {
+    toString() {
         return '(' + this.width.toFixed(2) + ', ' + this.height.toFixed(2) + ')';
     }
 }
 
-CCClass.fastDefine('cc.Size', Size, { width: 0, height: 0});
+CCClass.fastDefine('cc.Size', Size, { width: 0, height: 0 });
 
 /**
  * @module cc
@@ -170,7 +170,7 @@ CCClass.fastDefine('cc.Size', Size, { width: 0, height: 0});
  * @return {Size}
  * @example {@link utils/api/engine/docs/cocos2d/core/value-types/CCSize/size.js}
  */
-cc.size = function (w, h) {
+cc.size = function (w = 0, h = 0) {
     return new Size(w, h);
 };
 

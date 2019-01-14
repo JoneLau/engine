@@ -4,7 +4,7 @@ import { vec3, mat4 } from '../../../core/vmath/index';
 let vec3_temp = vec3.create();
 let _worldMatrix = mat4.create();
 
-function fillVertices(node, buffer, renderData, color) {
+export function fillVertices(node, buffer, renderData, color) {
     let data = renderData._data,
         vertexOffset = buffer.byteOffset >> 2;
 
@@ -30,7 +30,7 @@ function fillVertices(node, buffer, renderData, color) {
     }
 }
 
-function fillMeshVertices(node, buffer, renderData, color) {
+export function fillMeshVertices(node, buffer, renderData, color) {
     let data = renderData._data,
         vertexOffset = buffer.byteOffset >> 2;
 
@@ -71,7 +71,7 @@ function fillMeshVertices(node, buffer, renderData, color) {
     }
 }
 
-function fillVertices3D(node, buffer, renderData, color) {
+export function fillVertices3D(node, buffer, renderData, color) {
     let data = renderData._data,
         vertexOffset = buffer.byteOffset >> 2;
 
@@ -98,7 +98,7 @@ function fillVertices3D(node, buffer, renderData, color) {
     }
 }
 
-function fillMeshVertices3D(node, buffer, renderData, color) {
+export function fillMeshVertices3D(node, buffer, renderData, color) {
     let data = renderData._data,
         vertexOffset = buffer.byteOffset >> 2;
 
@@ -140,7 +140,7 @@ function fillMeshVertices3D(node, buffer, renderData, color) {
     }
 }
 
-function fillVerticesWithoutCalc(node, buffer, renderData, color) {
+export function fillVerticesWithoutCalc(node, buffer, renderData, color) {
     let data = renderData._data,
         vertexOffset = buffer.byteOffset >> 2;
 
@@ -161,7 +161,7 @@ function fillVerticesWithoutCalc(node, buffer, renderData, color) {
     }
 }
 
-function fillVerticesWithoutCalc3D(node, buffer, renderData, color) {
+export function fillVerticesWithoutCalc3D(node, buffer, renderData, color) {
     let data = renderData._data,
         vertexOffset = buffer.byteOffset >> 2;
 
@@ -183,11 +183,11 @@ function fillVerticesWithoutCalc3D(node, buffer, renderData, color) {
     }
 }
 
-module.exports = {
-    fillVertices: fillVertices,
-    fillMeshVertices: fillMeshVertices,
-    fillVertices3D: fillVertices3D,
-    fillMeshVertices3D: fillMeshVertices3D,
-    fillVerticesWithoutCalc: fillVerticesWithoutCalc,
-    fillVerticesWithoutCalc3D: fillVerticesWithoutCalc3D
-};
+// module.exports = {
+//     fillVertices: fillVertices,
+//     fillMeshVertices: fillMeshVertices,
+//     fillVertices3D: fillVertices3D,
+//     fillMeshVertices3D: fillMeshVertices3D,
+//     fillVerticesWithoutCalc: fillVerticesWithoutCalc,
+//     fillVerticesWithoutCalc3D: fillVerticesWithoutCalc3D
+// };

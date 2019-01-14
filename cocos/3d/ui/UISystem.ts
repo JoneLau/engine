@@ -1,40 +1,37 @@
 
 import gfx from '../../renderer/gfx/index';
-import SpriteBatchModel from '../../renderer/models/sprite-batch-model';
-import { Node } from '../../scene-graph/index';
-import { RecyclePool } from '../../3d/memop/index';
-import Material from '../../3d/assets/material';
-import { RenderQueue } from '../../renderer/core/constants';
+// import SpriteBatchModel from '../../renderer/models/sprite-batch-model';
+import { RecyclePool } from '../memop/index';
+// import Material from '../../3d/assets/material';
+// import { RenderQueue } from '../../renderer/core/constants';
 import { mat4 } from '../../core/vmath/index';
-import MeshBuffer from './render/mesh-buffer';
+import MeshBuffer from './render-data/mesh-buffer';
 import { vfmt3D } from '../../2d/renderer/webgl/vertex-format'
 import Model from '../../renderer/scene/model';
 import InputAssembler from '../../renderer/core/input-assembler';
-import CanvasComponent from '../../3d/ui/CCCanvas';
-import SpriteComponent from '../../3d/ui/CCSprite';
-import LabelComponent from '../../3d/ui/CCLabel';
-import RenderComponent from '../../2d/renderable/CCRenderComponent';
+import CanvasComponent from './components/canvas-component';
+import SpriteComponent from './components/sprite-component';
+import LabelComponent from './components/label-component';
+import RenderComponent from './components/render-component';
+import Material from '../assets/material';
+import SpriteFrame from '../../assets/CCSpriteFrame';
+import { Node } from '../../scene-graph';
 
 export default class UISystem {
-    constructor() {
-        this._screens = [];
-        this._buffer = new MeshBuffer(this, vfmt3D);
-        // internal states
-        this._currScreen = null;
-        this._currMaterail = null;
-        this._currSpriteFrame = null;
-        this._currUserKey = 0;
-        this._dummyNode = null;
-        this._batchedModels = [];
-        // pools
-        this._iaPool = new RecyclePool(function () {
-            return new InputAssembler();
-        }, 16);
-
-        this._modelPool = new RecyclePool(function () {
-            return new Model();
-        }, 16);
-    }
+    _screens: CanvasComponent[] = [];
+    _buffer: MeshBuffer | null = new MeshBuffer(this, vfmt3D);
+    _currScreen: CanvasComponent | null = null;
+    _currMaterail: Material | null = null;
+    _currSpriteFrame: SpriteFrame | null = null;
+    _currUserKey: number = 0;
+    _dummyNode: Node | null = null;
+    _batchedModels: Model[] = [];
+    _iaPool: RecyclePool | null = new RecyclePool(function () {
+        return new InputAssembler();
+    }, 16);
+    _modelPool: RecyclePool | null = new RecyclePool(function () {
+        return new Model();
+    }, 16);
 
     addScreen(comp) {
         this._screens.push(comp);
@@ -125,7 +122,7 @@ export default class UISystem {
                 if (label && label.enabledInHierarchy) {
                     this._commitComp(label);
                 }
-            });
+            }, null);
 
             this._flush();
             this._buffer.uploadData();
@@ -198,7 +195,6 @@ export default class UISystem {
         this._modelPool.reset();
         this._iaPool.reset();
         this._batchedModels.length = 0;
-        this.node = null;
     }
 }
 

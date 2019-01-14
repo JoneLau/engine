@@ -1,0 +1,28 @@
+import UISystem from './UISystem';
+import CanvasComponent from './components/canvas-component';
+import RenderComponent from './components/render-component';
+import SpriteComponent from './components/sprite-component';
+import LabelComponent from './components/label-component';
+import UIRectComponent from './components/ui-rect-component';
+import ButtonComponent from './components/button-component';
+import ToggleGroupComponent from './components/toggle-group-component';
+import ToggleComponent from './components/toggle-component';
+import SliderComponent from './components/slider-component';
+import ProgressBarComponent from './components/progress-bar-component';
+import WidgetComponent from './components/widget-component';
+import EditBoxComponent from './components/editbox/edit-box-component';
+import './assembler/index';
+
+cc.UISystem = UISystem;
+cc.CanvasComponent = CanvasComponent;
+cc.RenderComponent = RenderComponent;
+cc.SpriteComponent = SpriteComponent;
+cc.LabelComponent = LabelComponent;
+cc.UIRectComponent = UIRectComponent;
+cc.ButtonComponent = ButtonComponent;
+cc.ToggleGroupComponent = ToggleGroupComponent;
+cc.ToggleComponent = ToggleComponent;
+cc.SliderComponent = SliderComponent;
+cc.ProgressBarComponent = ProgressBarComponent;
+cc.WidgetComponent = WidgetComponent;
+cc.EditBoxComponent = EditBoxComponent;

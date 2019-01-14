@@ -24,6 +24,7 @@
  ****************************************************************************/
 
 import { vec3 } from '../../../../core/vmath/index';
+import LabelComponent from '../../components/label-component';
 // const dynamicAtlasManager = require('../../../../utils/dynamic-atlas/manager');
 
 let simple = {
@@ -65,11 +66,9 @@ let simple = {
             vec3_temps.push(vec3.create());
         }
         return function (sprite, /*renderer*/buffer) {
-            // sprite.node._updateWorldMatrix();
             let data = sprite._renderData._data,
                 node = sprite.node,
                 color = sprite._color._val;
-            // matrix = node._worldMatrix;
 
             let /*buffer = renderer._meshBuffer3D,*/
                 vertexOffset = buffer.byteOffset >> 2,
@@ -94,7 +93,6 @@ let simple = {
             for (let i = 0; i < 4; i++) {
                 // vertex
                 let vertex = vec3_temps[i];
-                //vec3.transformMat4(vertex, vertex, matrix);
 
                 vbuf[vertexOffset++] = vertex.x;
                 vbuf[vertexOffset++] = vertex.y;
