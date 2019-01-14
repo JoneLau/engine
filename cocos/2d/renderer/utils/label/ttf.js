@@ -32,7 +32,7 @@
 import macro from '../../../../core/platform/CCMacro';
 import * as textUtils from '../../../../core/utils/text-utils';
 import Component from '../../../../components/CCComponent';
-import LabelComponent from '../../../../3d/ui/CCLabel';
+import LabelComponent from '../../../../3d/ui/components/label-component';
 import LabelOutline from '../../../../2d/label/CCLabelOutline';
 
 const Overflow = LabelComponent.Overflow;
@@ -95,7 +95,7 @@ let _canvasPool = {
 };
 
 
-let ttf = {
+export default {
     _getAssemblerData() {
         // if (cc.game.renderType === cc.game.RENDER_TYPE_CANVAS) {
         //     _sharedLabelData = _canvasPool.get();
@@ -504,5 +504,3 @@ let ttf = {
         }
     }
 };
-
-export default ttf;

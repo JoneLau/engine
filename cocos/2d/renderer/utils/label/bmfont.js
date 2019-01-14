@@ -30,7 +30,7 @@
 
 // const textUtils = require('../../../utils/text-utils');
 import macro from '../../../../core/platform/CCMacro';
-import Label from '../../../../3d/ui/CCLabel';
+import Label from '../../../../3d/ui/components/label-component';
 import textUtils from '../../../../core/utils/text-utils';
 
 const Overflow = Label.Overflow;

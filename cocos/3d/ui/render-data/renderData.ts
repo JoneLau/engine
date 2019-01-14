@@ -1,27 +1,28 @@
 
-import RecyclePool from '../../3d/memop/recycle-pool';
+import RecyclePool from '../../memop/recycle-pool';
+import Material from '../../assets/material';
 
 class BaseRenderData {
-    material = null;
-    vertexCount = 0;
-    indiceCount = 0;
+    material: Material | null = null;
+    vertexCount: number = 0;
+    indiceCount: number = 0;
 };
 
 export default class RenderData extends BaseRenderData {
-    _data = [];
-    _indices = [];
-    _pivotX = 0;
-    _pivotY = 0;
-    _width = 0;
-    _height = 0;
-    uvDirty = true;
-    vertDirty = true;
+    _data: number[] = [];
+    _indices: number[] = [];
+    _pivotX: number = 0;
+    _pivotY: number = 0;
+    _width: number = 0;
+    _height: number = 0;
+    uvDirty: boolean = true;
+    vertDirty: boolean = true;
 
     get dataLength() {
         return this._data.length;
     }
 
-    set dataLength(length) {
+    set dataLength(length: number) {
         let data = this._data;
         if (data.length !== length) {
             // // Free extra data
@@ -37,7 +38,7 @@ export default class RenderData extends BaseRenderData {
         }
     }
 
-    updateSizeNPivot(width, height, pivotX, pivotY) {
+    updateSizeNPivot(width: number, height: number, pivotX: number, pivotY: number) {
         if (width !== this._width ||
             height !== this._height ||
             pivotX !== this._pivotX ||
@@ -88,7 +89,7 @@ export default class RenderData extends BaseRenderData {
         };
     }
 
-    static remove(idx) {
+    static remove(idx: number) {
         _pool.data[idx].clear();
         _pool.remove(idx);
     }

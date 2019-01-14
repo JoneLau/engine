@@ -23,8 +23,9 @@
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE.
  ****************************************************************************/
-import Component from '../../components/CCComponent';
-import { ccclass, menu, executionOrder, executeInEditMode, property } from '../../core/data/class-decorator';
+import Component from '../../../components/CCComponent';
+import { ccclass, menu, executionOrder, executeInEditMode, property } from '../../../core/data/class-decorator';
+import ToggleComponent from './toggle-component';
 
 /**
  * !#en ToggleGroup is not a visiable UI component but a way to modify the behavior of a set of Toggles.
@@ -41,8 +42,8 @@ import { ccclass, menu, executionOrder, executeInEditMode, property } from '../.
 @executeInEditMode
 export default class ToggleGroupComponent extends Component {
     @property
-    _alloSwitchOff = false;
-    _toggleItems = [];
+    _allowSwitchOff: boolean = false;
+    _toggleItems: ToggleComponent[] = [];
 
     /**
      * !#en If this setting is true, a toggle could be switched off and on when pressed.
@@ -53,11 +54,11 @@ export default class ToggleGroupComponent extends Component {
      */
     @property
     get allowSwitchOff() {
-        return this._alloSwitchOff;
+        return this._allowSwitchOff;
     }
 
-    set allowSwitchOff(value) {
-        this._alloSwitchOff = value;
+    set allowSwitchOff(value: boolean) {
+        this._allowSwitchOff = value;
     }
 
     /**
@@ -73,7 +74,7 @@ export default class ToggleGroupComponent extends Component {
         this._makeAtLeastOneToggleChecked();
     }
 
-    updateToggles(toggle) {
+    updateToggles(toggle: ToggleComponent) {
         if (!this.enabledInHierarchy) return;
 
         this._toggleItems.forEach(function (item) {
@@ -85,7 +86,7 @@ export default class ToggleGroupComponent extends Component {
         });
     }
 
-    addToggle(toggle) {
+    addToggle(toggle: ToggleComponent) {
         var index = this._toggleItems.indexOf(toggle);
         if (index === -1) {
             this._toggleItems.push(toggle);
@@ -93,7 +94,7 @@ export default class ToggleGroupComponent extends Component {
         this._allowOnlyOneToggleChecked();
     }
 
-    removeToggle(toggle) {
+    removeToggle(toggle: ToggleComponent) {
         var index = this._toggleItems.indexOf(toggle);
         if (index > -1) {
             this._toggleItems.splice(index, 1);

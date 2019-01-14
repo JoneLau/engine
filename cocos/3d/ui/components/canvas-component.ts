@@ -24,10 +24,11 @@
  THE SOFTWARE.
  ****************************************************************************/
 
-import Component from '../../components/CCComponent';
-import { ccclass, property, executeInEditMode, menu, help, disallowMultiple, executionOrder } from '../../core/data/class-decorator';
-import renderer from '../../renderer/index';
-import { RenderQueue } from '../../renderer/core/constants';
+import Component from '../../../components/CCComponent';
+import { ccclass, property, executeInEditMode, menu, executionOrder } from '../../../core/data/class-decorator';
+import renderer from '../../../renderer/index';
+import { RenderQueue } from '../../../renderer/core/constants';
+import { Size } from '../../../core/value-types';
 
 /**
  * !#zh: 作为 UI 根节点，为所有子节点提供视窗四边的位置信息以供对齐，另外提供屏幕适配策略接口，方便从编辑器设置。
@@ -39,8 +40,6 @@ import { RenderQueue } from '../../renderer/core/constants';
 @ccclass('cc.CanvasComponent')
 @executionOrder(100)
 @menu('UI/Canvas')
-// @menu('i18n:MAIN_MENU.component.ui/Canvas')
-// @help('i18n:COMPONENT.help_url.canvas')
 @executeInEditMode
 // @disallowMultiple
 export default class CanvasComponent extends Component {
@@ -51,27 +50,24 @@ export default class CanvasComponent extends Component {
      * @default new cc.Size(960, 640)
      */
     @property
-    _designResolution = cc.size(960, 640);
+    _designResolution: Size = cc.size(960, 640);
     @property
-    _fitWidth = false;
+    _fitWidth: boolean = false;
     @property
-    _fitHeight = true;
+    _fitHeight: boolean = true;
     @property
-    /**
-     * !#en priority in render
-     * !#zh 显示优先级
-     * @property {Number} priority
-     */
     _priority = 0;
 
+    _thisOnResized: Function | null = null;
+    _view: renderer.View | null = null;
+
     @property({
-        tooltip: CC_DEV && 'i18n:COMPONENT.canvas.design_resolution',
-        type: cc.Size
+        type: Size
     })
     get designResolution() {
         return cc.size(this._designResolution);
     }
-    set designResolution(value) {
+    set designResolution(value: Size) {
         this._designResolution.width = value.width;
         this._designResolution.height = value.height;
         this.applySettings();
@@ -84,13 +80,11 @@ export default class CanvasComponent extends Component {
      * @property {Boolean} fitHeight
      * @default false
      */
-    @property({
-        tooltip: CC_DEV && 'i18n:COMPONENT.canvas.fit_height'
-    })
+    @property()
     get fitHeight() {
         return this._fitHeight;
     }
-    set fitHeight(value) {
+    set fitHeight(value: boolean) {
         if (this._fitHeight !== value) {
             this._fitHeight = value;
             this.applySettings();
@@ -104,13 +98,11 @@ export default class CanvasComponent extends Component {
      * @property {Boolean} fitWidth
      * @default false
      */
-    @property({
-        tooltip: CC_DEV && 'i18n:COMPONENT.canvas.fit_width'
-    })
+    @property()
     get fitWidth() {
         return this._fitWidth;
     }
-    set fitWidth(value) {
+    set fitWidth(value: boolean) {
         if (this._fitWidth !== value) {
             this._fitWidth = value;
             this.applySettings();
@@ -118,17 +110,23 @@ export default class CanvasComponent extends Component {
         }
     }
 
+    /**
+     * !#en priority in render
+      * !#zh 显示优先级
+      * @property {Number} priority
+      */
+    @property
     get priority() {
         return this._priority;
     }
 
-    set priority(value) {
+    set priority(value: number) {
         this._priority = value;
     }
 
     static views = [];
 
-    static findView(comp) {
+    static findView(comp: Component) {
         for (var i = 0; i < CanvasComponent.views.length; i++) {
             var element = CanvasComponent.views[i];
             if (element.id === comp._viewID) {
@@ -164,25 +162,27 @@ export default class CanvasComponent extends Component {
     }
 
     resetInEditor() {
-        _Scene._applyCanvasPreferences(this);
+        // _Scene._applyCanvasPreferences(this);
     }
 
     __preload() {
-        if (CC_DEV) {
-            var Flags = cc.Object.Flags;
-            this._objFlags |= (Flags.IsPositionLocked | Flags.IsAnchorLocked | Flags.IsSizeLocked);
-        }
+        // if (CC_DEV) {
+        //     var Flags = cc.Object.Flags;
+        //     this._objFlags |= (Flags.IsPositionLocked | Flags.IsAnchorLocked | Flags.IsSizeLocked);
+        // }
 
-        if (CanvasComponent.instance) {
-            return cc.errorID(6700,
-                this.node.name, CanvasComponent.instance.node.name);
-        }
+        // if (CanvasComponent.instance) {
+        //     return cc.errorID(6700,
+        //         this.node.name, CanvasComponent.instance.node.name);
+        // }
         // CanvasComponent.instance = this;
 
-        if (CC_EDITOR) {
-            cc.engine.on('design-resolution-changed', this._thisOnResized);
-        }
-        else {
+        // if (CC_EDITOR) {
+        //     cc.engine.on('design-resolution-changed', this._thisOnResized);
+        // }
+        // else {
+        // TODO: Need to do editor initiative call
+        if (!CC_EDITOR) {
             // if (cc.sys.isMobile) {
             //     window.addEventListener('resize', this._thisOnResized);
             // }
@@ -214,17 +214,19 @@ export default class CanvasComponent extends Component {
     }
 
     onDestroy() {
-        if (CC_EDITOR) {
-            cc.engine.off('design-resolution-changed', this._thisOnResized);
-        }
-        else {
-            if (cc.sys.isMobile) {
-                window.removeEventListener('resize', this._thisOnResized);
-            }
-            else {
-                cc.view.off('canvas-resize', this._thisOnResized);
-            }
-        }
+        // if (CC_EDITOR) {
+        //     cc.engine.off('design-resolution-changed', this._thisOnResized);
+        // }
+        // else {
+        //     if (cc.sys.isMobile) {
+        //         window.removeEventListener('resize', this._thisOnResized);
+        //     }
+        //     else {
+        //         cc.view.off('canvas-resize', this._thisOnResized);
+        //     }
+        // }
+
+        cc.view.off('design-resolution-changed', this._thisOnResized);
 
         cc.director._uiSystem.removeScreen(this);
 

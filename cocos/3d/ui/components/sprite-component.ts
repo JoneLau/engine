@@ -24,13 +24,14 @@
  THE SOFTWARE.
  ****************************************************************************/
 // @ts-check
-import misc from '../../core/utils/misc';
-import RenderComponent from '../../2d/renderable/CCRenderComponent';
-import { vec2, vec3, mat4, color4 } from '../../core/vmath/index';
-import { ccclass, property, menu, executionOrder, executeInEditMode } from '../../core/data/class-decorator';
-import SpriteFrame from '../../assets/CCSpriteFrame';
-import Texture2D from '../../assets/texture-2d';
-import RenderData from './renderData';
+import { clampf } from '../../../core/utils/misc';
+import RenderComponent from './render-component';
+import { ccclass, property, menu, executionOrder, executeInEditMode, requireComponent } from '../../../core/data/class-decorator';
+import SpriteFrame from '../../../assets/CCSpriteFrame';
+import atlas from '../../../assets/CCSpriteAtlas';
+import { Vec2 } from '../../../core/value-types';
+import MeshBuffer from '../render-data/mesh-buffer';
+import UIRectComponent from './ui-rect-component';
 
 /**
  * !#en Enum for sprite type.
@@ -140,27 +141,29 @@ var FillType = cc.Enum({
 @ccclass('cc.SpriteComponent')
 @executionOrder(100)
 @menu('UI/Sprite')
-// @executeInEditMode
+@requireComponent(UIRectComponent)
+@executeInEditMode
 export default class SpriteComponent extends RenderComponent {
     @property
-    _spriteFrame = null;
+    _spriteFrame: SpriteFrame | null = null;
     @property
-    _type = SpriteType.SIMPLE;
+    _type: number = SpriteType.SIMPLE;
     @property
-    _fillType = FillType.HORIZONTAL;
+    _fillType: number = FillType.HORIZONTAL;
     // @property
     // _sizeMode = SizeMode.TRIMMED;
     @property
-    _fillCenter = cc.v2(0, 0);
+    _fillCenter: Vec2 = cc.v2(0, 0);
     @property
-    _fillStart = 0;
+    _fillStart: number = 0;
     @property
-    _fillRange = 0;
+    _fillRange: number = 0;
     // @property
     // _isTrimmedMode = true;
     // _state = 0;
+    //TODO:
     @property
-    _atlas = null;
+    _atlas: atlas | null = null;
     _assembler = null;
 
     /**
@@ -178,7 +181,7 @@ export default class SpriteComponent extends RenderComponent {
         return this._spriteFrame;
     }
 
-    set spriteFrame(value) {
+    set spriteFrame(value: SpriteFrame | null) {
         if (this._spriteFrame === value) {
             return;
         }
@@ -207,7 +210,7 @@ export default class SpriteComponent extends RenderComponent {
     get type() {
         return this._type;
     }
-    set type(value) {
+    set type(value: number) {
         if (this._type !== value) {
             this._type = value;
             this._updateAssembler();
@@ -222,7 +225,7 @@ export default class SpriteComponent extends RenderComponent {
      * @property fillType
      * @type {Sprite.FillType}
      * @example
-     * sprite.fillType = cc.Sprite.FillType.HORIZONTAL;
+     * sprite.fillType = SpriteComponent.FillType.HORIZONTAL;
      */
     @property({
         type: FillType
@@ -230,7 +233,7 @@ export default class SpriteComponent extends RenderComponent {
     get fillType() {
         return this._fillType;
     }
-    set fillType(value) {
+    set fillType(value: number) {
         if (value !== this._fillType) {
             if (value === FillType.RADIAL || this._fillType === FillType.RADIAL) {
                 // this.destroyRenderData(/*this._renderData*/);
@@ -252,13 +255,13 @@ export default class SpriteComponent extends RenderComponent {
      * @property fillCenter
      * @type {Vec2}
      * @example
-     * sprite.fillCenter = new cc.Vec2(0, 0);
+     * sprite.fillCenter = new cc.v2(0, 0);
      */
     @property
     get fillCenter() {
         return this._fillCenter;
     }
-    set fillCenter(value) {
+    set fillCenter(value: Vec2) {
         this._fillCenter.x = value.x;
         this._fillCenter.y = value.y;
         if (this._type === SpriteType.FILLED && this._renderData) {
@@ -282,8 +285,8 @@ export default class SpriteComponent extends RenderComponent {
         return this._fillStart;
     }
 
-    set fillStart(value) {
-        this._fillStart = cc.misc.clampf(value, -1, 1);
+    set fillStart(value: number) {
+        this._fillStart = clampf(value, -1, 1);
         if (this._type === SpriteType.FILLED && this._renderData) {
             this.markForUpdateRenderData(true);
         }
@@ -304,10 +307,10 @@ export default class SpriteComponent extends RenderComponent {
     get fillRange() {
         return this._fillRange;
     }
-    set fillRange(value) {
+    set fillRange(value: number) {
         // ??? -1 ~ 1
         // this._fillRange = cc.misc.clampf(value, -1, 1);
-        this._fillRange = cc.misc.clampf(value, 0, 1);
+        this._fillRange = clampf(value, 0, 1);
         if (this._type === SpriteType.FILLED && this._renderData) {
             this.markForUpdateRenderData(true);
         }
@@ -325,7 +328,7 @@ export default class SpriteComponent extends RenderComponent {
         return false;
     }
 
-    set trim(value) {
+    set trim(value: boolean) {
         // if (this._isTrimmedMode !== value) {
         //     this._isTrimmedMode = value;
         //     if ((this._type === SpriteType.SIMPLE || this._type === SpriteType.MESH) &&
@@ -381,6 +384,7 @@ export default class SpriteComponent extends RenderComponent {
     // onLoad() {}
 
     onEnable() {
+        super.onEnable();
         if (this._spriteFrame) {
             if (!this._spriteFrame.textureLoaded()) {
                 // this._spriteFrame.once('load', this._onTextureLoaded, this);
@@ -391,11 +395,11 @@ export default class SpriteComponent extends RenderComponent {
         this._updateAssembler();
         this._activateMaterial();
 
-        this.node.on(cc.NodeUI.EventType.SIZE_CHANGED, this._onNodeSizeDirty, this);
-        this.node.on(cc.NodeUI.EventType.ANCHOR_CHANGED, this._onNodeSizeDirty, this);
+        this.node.on(cc.Node.EventType.SIZE_CHANGED, this._onNodeSizeDirty, this);
+        this.node.on(cc.Node.EventType.ANCHOR_CHANGED, this._onNodeSizeDirty, this);
     }
 
-    updateRenderData(buffer) {
+    updateRenderData(buffer: MeshBuffer) {
         if (!this._spriteFrame || !this.material) {
             return;
         }
@@ -405,11 +409,13 @@ export default class SpriteComponent extends RenderComponent {
     }
 
     onDestroy() {
+        super.onDestroy();
         this.destroyRenderData();
     }
 
     onDisable() {
         // this._super();
+        super.onDisable();
 
         this.node.off(cc.NodeUI.EventType.SIZE_CHANGED, this._onNodeSizeDirty, this);
         this.node.off(cc.NodeUI.EventType.ANCHOR_CHANGED, this._onNodeSizeDirty, this);
@@ -467,7 +473,7 @@ export default class SpriteComponent extends RenderComponent {
         }
     }
 
-    _applyAtlas(spriteFrame) {
+    _applyAtlas(spriteFrame: SpriteFrame | null) {
         if (!CC_EDITOR) {
             return;
         }
@@ -497,7 +503,7 @@ export default class SpriteComponent extends RenderComponent {
         return true;
     }
 
-    markForUpdateRenderData(enable) {
+    markForUpdateRenderData(enable: boolean) {
         if (enable /*&& this._canRender()*/) {
             // this.node._renderFlag |= RenderFlow.FLAG_UPDATE_RENDER_DATA;
 
@@ -534,7 +540,7 @@ export default class SpriteComponent extends RenderComponent {
     //     this._applySpriteSize();
     // }
 
-    _applySpriteFrame(oldFrame) {
+    _applySpriteFrame(oldFrame: SpriteFrame | null) {
         // if (oldFrame && oldFrame.off) {
         //     oldFrame.off('load', this._onTextureLoaded, this);
         // }

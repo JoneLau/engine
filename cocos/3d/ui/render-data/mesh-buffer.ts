@@ -1,18 +1,34 @@
 import gfx from '../../../renderer/gfx/index';
-let MeshBuffer = cc.Class({
-    name: 'cc.MeshBuffer',
-    ctor(renderer, vertexFormat) {
-        this.byteStart = 0;
-        this.byteOffset = 0;
-        this.indiceStart = 0;
-        this.indiceOffset = 0;
-        this.vertexStart = 0;
-        this.vertexOffset = 0;
+import VertexFormat from '../../../renderer/gfx/vertex-format';
+import UISystem from '../UISystem';
 
+export default class MeshBuffer {
+    byteStart: number = 0;
+    byteOffset: number = 0;
+    indiceStart: number = 0;
+    indiceOffset: number = 0;
+    vertexStart: number = 0;
+    vertexOffset: number = 0;
+    _vertexFormat: VertexFormat | null = null;
+    _vertexBytes: number = 0;
+    _vb: gfx.VertexBuffer | null = null;
+    _ib: gfx.VertexBuffer | null = null
+
+    _vData = null;
+    _iData = null;
+    _uintVData = null;
+
+    _renderer = null;
+
+    _initVDataCount: number = 0; // actually 256 * 4 * (vertexFormat._bytes / 4)
+    _initIDataCount: number = 256 * 6;
+    _dirty: boolean = false;
+
+    constructor(renderer: UISystem, vertexFormat: VertexFormat) {
+
+        let device = cc.game._renderContext;
         this._vertexFormat = vertexFormat;
         this._vertexBytes = this._vertexFormat._bytes;
-        let device = cc.game._renderContext;
-
         this._vb = new gfx.VertexBuffer(
             device,
             vertexFormat,
@@ -20,7 +36,6 @@ let MeshBuffer = cc.Class({
             new ArrayBuffer(),
             0
         );
-
         this._ib = new gfx.IndexBuffer(
             device,
             gfx.INDEX_FMT_UINT16,
@@ -28,18 +43,10 @@ let MeshBuffer = cc.Class({
             new ArrayBuffer(),
             0
         );
-
-        this._vData = null;
-        this._iData = null;
-        this._uintVData = null;
-
         this._renderer = renderer;
-
-        this._initVDataCount = 256 * vertexFormat._bytes; // actually 256 * 4 * (vertexFormat._bytes / 4)
-        this._initIDataCount = 256 * 6;
-
+        this._initVDataCount = 256 * vertexFormat._bytes;
         this._reallocBuffer();
-    },
+    }
 
     uploadData() {
         if (this.byteOffset === 0 || !this._dirty) {
@@ -57,7 +64,7 @@ let MeshBuffer = cc.Class({
         ib.update(0, indicesData);
 
         this._dirty = false;
-    },
+    }
 
     requestStatic(vertexCount, indiceCount) {
         let byteOffset = this.byteOffset + vertexCount * this._vertexBytes;
@@ -83,7 +90,7 @@ let MeshBuffer = cc.Class({
         this.byteOffset = byteOffset;
 
         this._dirty = true;
-    },
+    }
 
     request(vertexCount, indiceCount) {
         if (this._renderer._buffer !== this) {
@@ -92,12 +99,12 @@ let MeshBuffer = cc.Class({
         }
 
         this.requestStatic(vertexCount, indiceCount);
-    },
+    }
 
     _reallocBuffer() {
         this._reallocVData(true);
         this._reallocIData(true);
-    },
+    }
 
     _reallocVData(copyOldData) {
         let oldVData;
@@ -116,7 +123,7 @@ let MeshBuffer = cc.Class({
         }
 
         this._vb._bytes = this._vData.byteLength;
-    },
+    }
 
     _reallocIData(copyOldData) {
         let oldIData = this._iData;
@@ -131,7 +138,7 @@ let MeshBuffer = cc.Class({
         }
 
         this._ib._bytes = this._iData.byteLength;
-    },
+    }
 
     reset() {
         this.byteStart = 0;
@@ -141,12 +148,13 @@ let MeshBuffer = cc.Class({
         this.vertexStart = 0;
         this.vertexOffset = 0;
         this._dirty = false;
-    },
+    }
 
     destroy() {
         this._ib.destroy();
         this._vb.destroy();
     }
-});
+}
 
-cc.MeshBuffer = module.exports = MeshBuffer;
+
+cc.MeshBuffer = MeshBuffer;
