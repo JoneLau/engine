@@ -24,10 +24,14 @@
  THE SOFTWARE.
  ****************************************************************************/
 
-import Component from '../../components/CCComponent';
-import { clamp01 } from '../../core/utils/misc';
-import { ccclass, menu, executionOrder, executeInEditMode, property } from '../../core/data/class-decorator';
-
+import Component from '../../../components/CCComponent';
+import { clamp01 } from '../../../core/utils/misc';
+import { ccclass, menu, executionOrder, executeInEditMode, property } from '../../../core/data/class-decorator';
+import SpriteComponent from './sprite-component';
+import { Vec2 } from '../../../core/value-types/index';
+import ComponentEventHandler from '../../../components/CCComponentEventHandler';
+import Event from '../../../core/event/event';
+import { EventTouch } from '../../../core/platform/event-manager/CCEvent';
 /**
  * !#en The Slider Direction
  * !#zh 滑动器方向
@@ -60,14 +64,17 @@ var Direction = cc.Enum({
 // @executeInEditMode
 export default class SliderComponent extends Component {
     @property
-    _handle = null;
+    _handle: SpriteComponent | null = null;
     @property
-    _direction = Direction.Horizontal;
+    _direction: number = Direction.Horizontal;
     @property
-    _progress = 0.1;
+    _progress: number = 0.1;
     @property
-    _slideEvents = [];
-    _offset = cc.v2();
+    _slideEvents: ComponentEventHandler[] = [];
+
+    _offset: Vec2 = cc.v2();
+    _dragging = false;
+    _touchHandle = false;
 
     /**
      * !#en The "handle" part of the slider
@@ -75,13 +82,13 @@ export default class SliderComponent extends Component {
      * @property {Button} handle
      */
     @property({
-        type: cc.ButtonComponent
+        type: SpriteComponent
     })
     get handle() {
         return this._handle;
     }
 
-    set handle(value) {
+    set handle(value: SpriteComponent) {
         if (this._handle === value) {
             return;
         }
@@ -104,7 +111,7 @@ export default class SliderComponent extends Component {
         return this._direction;
     }
 
-    set direction(value) {
+    set direction(value: number) {
         if (this._direction === value) {
             return;
         }
@@ -121,7 +128,7 @@ export default class SliderComponent extends Component {
         return this._progress;
     }
 
-    set progress(value) {
+    set progress(value: number) {
         if (this._progress === value) {
             return;
         }
@@ -133,27 +140,20 @@ export default class SliderComponent extends Component {
     /**
      * !#en The slider events callback
      * !#zh 滑动器组件事件回调函数
-     * @property {Component.EventHandler[]} slideEvents
+     * @property {ComponentEventHandler[]} slideEvents
      */
     @property({
-        type: cc.Component.EventHandler
+        type: ComponentEventHandler
     })
     get slideEvents() {
         return this._slideEvents;
     }
 
-    set slideEvents(value) {
+    set slideEvents(value: ComponentEventHandler[]) {
         this._slideEvents = value;
     }
 
     static Direction = Direction;
-
-    constructor() {
-        super();
-        this._offset = cc.v2();
-        this._touchHandle = false;
-        this._dragging = false;
-    }
 
     __preload() {
         this._updateHandlePosition();
@@ -161,8 +161,6 @@ export default class SliderComponent extends Component {
 
     // 注册事件
     onEnable() {
-        // hack
-        this._handle = this.node.getComponentInChildren(cc.RenderComponent);
         this._updateHandlePosition();
 
         this.node.on(cc.NodeUI.EventType.TOUCH_START, this._onTouchBegan, this);
@@ -188,7 +186,7 @@ export default class SliderComponent extends Component {
         }
     }
 
-    _onHandleDragStart(event) {
+    _onHandleDragStart(event: Event | null) {
         this._dragging = true;
         this._touchHandle = true;
         this._offset = this._handle.node.convertToNodeSpaceAR(event.touch.getLocation());
@@ -196,7 +194,7 @@ export default class SliderComponent extends Component {
         event.stopPropagation();
     }
 
-    _onTouchBegan(event) {
+    _onTouchBegan(event: Event | null) {
         if (!this._handle) { return; }
         this._dragging = true;
         if (!this._touchHandle) {
@@ -206,20 +204,20 @@ export default class SliderComponent extends Component {
         event.stopPropagation();
     }
 
-    _onTouchMoved(event) {
+    _onTouchMoved(event: Event | null) {
         if (!this._dragging) { return; }
         this._handleSliderLogic(event.touch);
         event.stopPropagation();
     }
 
-    _onTouchEnded(event) {
+    _onTouchEnded(event: Event | null) {
         this._dragging = false;
         this._touchHandle = false;
         this._offset = cc.v2();
         event.stopPropagation();
     }
 
-    _onTouchCancelled(event) {
+    _onTouchCancelled(event: Event | null) {
         this._dragging = false;
         event.stopPropagation();
     }
@@ -234,7 +232,7 @@ export default class SliderComponent extends Component {
         this.node.emit('slide', this);
     }
 
-    _updateProgress(touch) {
+    _updateProgress(touch: EventTouch | null) {
         if (!this._handle) { return; }
         var localTouchPos = this.node.convertToNodeSpaceAR(touch.getLocation());
         if (this.direction === Direction.Horizontal) {

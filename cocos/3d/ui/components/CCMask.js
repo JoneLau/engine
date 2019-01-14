@@ -25,12 +25,12 @@
  ****************************************************************************/
 
 const misc = require('../utils/misc');
-const renderEngine = require('../renderer/render-engine');
+const renderEngine = require('../../../2d/renderer/render-engine');
 const math = renderEngine.math;
 const StencilMaterial = renderEngine.StencilMaterial;
-const RenderComponent = require('./CCRenderComponent');
-const RenderFlow = require('../renderer/render-flow');
-const Graphics = require('../graphics/graphics');
+const RenderComponent = require('./render-component');
+const RenderFlow = require('../../../2d/renderer/render-flow');
+const Graphics = require('../../../2d/graphics/graphics');
 
 let _vec2_temp = cc.v2();
 let _mat4_temp = math.mat4.create();
@@ -224,7 +224,7 @@ let Mask = cc.Class({
         _resizeToTarget: {
             animatable: false,
             set: function (value) {
-                if(value) {
+                if (value) {
                     this._resizeNodeToTargetNode();
                 }
             }
@@ -235,14 +235,14 @@ let Mask = cc.Class({
         Type: MaskType,
     },
 
-    onLoad () {
+    onLoad() {
         this._graphics = new Graphics();
         this._graphics.node = this.node;
         this._graphics.lineWidth = 0;
         this._graphics.strokeColor = cc.color(0, 0, 0, 0);
     },
 
-    onRestore () {
+    onRestore() {
         if (!this._graphics) {
             this._graphics = new Graphics();
             this._graphics.node = this.node;
@@ -253,7 +253,7 @@ let Mask = cc.Class({
         }
     },
 
-    onEnable () {
+    onEnable() {
         this._super();
         if (this._type === MaskType.IMAGE_STENCIL) {
             if (!this._spriteFrame || !this._spriteFrame.textureLoaded()) {
@@ -279,7 +279,7 @@ let Mask = cc.Class({
         this._activateMaterial();
     },
 
-    onDisable () {
+    onDisable() {
         this._super();
 
         this.node.off(cc.Node.EventType.POSITION_CHANGED, this._updateGraphics, this);
@@ -291,19 +291,19 @@ let Mask = cc.Class({
         this.node._renderFlag &= ~RenderFlow.FLAG_POST_RENDER;
     },
 
-    onDestroy () {
+    onDestroy() {
         this._super();
         this._graphics.destroy();
     },
 
     _resizeNodeToTargetNode: CC_EDITOR && function () {
-        if(this.spriteFrame) {
+        if (this.spriteFrame) {
             let rect = this.spriteFrame.getRect();
             this.node.setContentSize(rect.width, rect.height);
         }
     },
 
-    _onTextureLoaded () {
+    _onTextureLoaded() {
         // Mark render data dirty
         if (this._renderData) {
             this._renderData.uvDirty = true;
@@ -316,7 +316,7 @@ let Mask = cc.Class({
         }
     },
 
-    _applySpriteFrame (oldFrame) {
+    _applySpriteFrame(oldFrame) {
         if (oldFrame && oldFrame.off) {
             oldFrame.off('load', this._onTextureLoaded, this);
         }
@@ -332,7 +332,7 @@ let Mask = cc.Class({
         }
     },
 
-    _activateMaterial () {
+    _activateMaterial() {
         // cannot be activated if texture not loaded yet
         if (this._type === MaskType.IMAGE_STENCIL && (!this.spriteFrame || !this.spriteFrame.textureLoaded())) {
             this.markForRender(false);
@@ -365,7 +365,7 @@ let Mask = cc.Class({
         this.markForRender(true);
     },
 
-    _updateGraphics () {
+    _updateGraphics() {
         let node = this.node;
         let graphics = this._graphics;
         // Share render data with graphics content
@@ -392,13 +392,13 @@ let Mask = cc.Class({
         }
     },
 
-    _hitTest (cameraPt) {
+    _hitTest(cameraPt) {
         let node = this.node;
         let size = node.getContentSize(),
             w = size.width,
             h = size.height,
             testPt = _vec2_temp;
-        
+
         node._updateWorldMatrix();
         math.mat4.invert(_mat4_temp, node._worldMatrix);
         math.vec2.transformMat4(testPt, cameraPt, _mat4_temp);
@@ -415,7 +415,7 @@ let Mask = cc.Class({
         }
     },
 
-    markForUpdateRenderData (enable) {
+    markForUpdateRenderData(enable) {
         if (enable && this.enabledInHierarchy) {
             this.node._renderFlag |= RenderFlow.FLAG_UPDATE_RENDER_DATA;
         }
@@ -424,19 +424,19 @@ let Mask = cc.Class({
         }
     },
 
-    markForRender (enable) {
+    markForRender(enable) {
         if (enable && this.enabledInHierarchy) {
-            this.node._renderFlag |= (RenderFlow.FLAG_RENDER | RenderFlow.FLAG_UPDATE_RENDER_DATA | 
-                                      RenderFlow.FLAG_POST_RENDER);
+            this.node._renderFlag |= (RenderFlow.FLAG_RENDER | RenderFlow.FLAG_UPDATE_RENDER_DATA |
+                RenderFlow.FLAG_POST_RENDER);
         }
         else if (!enable) {
             this.node._renderFlag &= ~(RenderFlow.FLAG_RENDER | RenderFlow.FLAG_POST_RENDER);
         }
     },
 
-    disableRender () {
-        this.node._renderFlag &= ~(RenderFlow.FLAG_RENDER | RenderFlow.FLAG_UPDATE_RENDER_DATA | 
-                                   RenderFlow.FLAG_POST_RENDER);
+    disableRender() {
+        this.node._renderFlag &= ~(RenderFlow.FLAG_RENDER | RenderFlow.FLAG_UPDATE_RENDER_DATA |
+            RenderFlow.FLAG_POST_RENDER);
     },
 });
 

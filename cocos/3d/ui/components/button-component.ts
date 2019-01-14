@@ -24,10 +24,16 @@
  THE SOFTWARE.
  ****************************************************************************/
 //@ts-check
-import Component from '../../components/CCComponent';
-import { lerp } from '../../core/utils/misc';
-import { ccclass, menu, executionOrder, executeInEditMode, property } from '../../core/data/class-decorator';
-import * as math from '../../core/vmath/index'
+import Component from '../../../components/CCComponent';
+import { lerp } from '../../../core/utils/misc';
+import { ccclass, menu, executionOrder, executeInEditMode, property } from '../../../core/data/class-decorator';
+import * as math from '../../../core/vmath/index';
+import { Vec3, Color } from '../../../core/value-types/index';
+import SpriteFrame from '../../../assets/CCSpriteFrame';
+import { Node } from '../../../scene-graph';
+import ComponentEventHandler from '../../../components/CCComponentEventHandler';
+import Event from '../../../core/event/event';
+import SpriteComponent from './sprite-component';
 
 /**
  * !#en Enum for transition type.
@@ -123,48 +129,46 @@ let Transition = cc.Enum({
 @menu('UI/Button')
 @executeInEditMode
 export default class ButtonComponent extends Component {
+    @property
+    _interactable: boolean = true;
+    @property
+    _transition: number = Transition.NONE;
+    @property
+    _normalColor: Color = cc.color(214, 214, 214);
+    @property
+    _hoverColor: Color = cc.color(211, 211, 211);
+    @property
+    _pressColor: Color = cc.Color.WHITE;
+    @property
+    _disabledColor: Color = cc.color(124, 124, 124);
+    @property
+    _normalSprite: SpriteFrame | null = null;
+    @property
+    _hoverSprite: SpriteFrame | null = null;
+    @property
+    _pressedSprite: SpriteFrame | null = null;
+    @property
+    _disabledSprite: SpriteFrame | null = null;
+    @property
+    _duration: number = 0.1;
+    @property
+    _zoomScale: number = 1.2;
+    @property
+    _target: Node = null;
+    @property
+    _clickEvents: ComponentEventHandler[] = [];
 
-    _pressed = false;
-    _hovered = false;
-    _fromColor = cc.color();
-    _toColor = cc.color();
-    _time = 0;
-    _transitionFinished = true;
-    _fromScale = math.vec3.create();
-    _toScale = math.vec3.create();
-    _originalScale = math.vec3.create();
-    @property
-    _interactable = true;
-    @property
-    _transition = Transition.NONE;
-    @property
-    _normalColor = cc.color(214, 214, 214);
-    @property
-    _hoverColor = cc.color(211, 211, 211);
-    @property
-    _pressColor = cc.Color.WHITE;
-    @property
-    _disabledColor = cc.color(124, 124, 124);
-    @property
-    _normalSprite = null;
-    @property
-    _hoverSprite = null;
-    @property
-    _pressedSprite = null;
-    @property
-    _disabledSprite = null;
-    /**
-     * range [0,10]
-     */
-    @property
-    _duration = 0.1;
-    @property
-    _zoomScale = 1.2;
-    @property
-    _target = null;
-    @property
-    _clickEvents = [];
-    _previousNormalSprite = null;
+    _pressed: boolean = false;
+    _hovered: boolean = false;
+    _fromColor: Color = cc.color();
+    _toColor: Color = cc.color();
+    _time: number = 0;
+    _transitionFinished: boolean = true;
+    _fromScale: Vec3 = cc.v3();
+    _toScale: Vec3 = cc.v3();
+    _originalScale: Vec3 = cc.v3();
+    _sprite: SpriteComponent | null = null;
+    _previousNormalSprite: SpriteFrame | null = null;
 
     /**
      * !#en
@@ -180,7 +184,7 @@ export default class ButtonComponent extends Component {
         return this._interactable;
     }
 
-    set interactable(value) {
+    set interactable(value: boolean) {
         if (CC_EDITOR) {
             if (value) {
                 this._previousNormalSprite = this.normalSprite;
@@ -196,7 +200,7 @@ export default class ButtonComponent extends Component {
         }
     }
 
-    set _resizeToTarget(value) {
+    set _resizeToTarget(value: boolean) {
         if (value) {
             this._resizeNodeToTargetNode();
         }
@@ -228,7 +232,7 @@ export default class ButtonComponent extends Component {
         return this._transition;
     }
 
-    set transition(value) {
+    set transition(value: number) {
         if (this._transition === value) {
             return;
         }
@@ -248,7 +252,7 @@ export default class ButtonComponent extends Component {
         return this._normalColor;
     }
 
-    set normalColor(value) {
+    set normalColor(value: Color) {
         if (this._normalColor === value) {
             return
         }
@@ -268,7 +272,7 @@ export default class ButtonComponent extends Component {
         return this._pressColor;
     }
 
-    set pressedColor(value) {
+    set pressedColor(value: Color) {
         if (this._pressColor === value) {
             return;
         }
@@ -286,7 +290,7 @@ export default class ButtonComponent extends Component {
         return this._hoverColor;
     }
 
-    set hoverColor(value) {
+    set hoverColor(value: Color) {
         if (this._hoverColor === value) {
             return;
         }
@@ -303,7 +307,7 @@ export default class ButtonComponent extends Component {
         return this._disabledColor;
     }
 
-    set disabledColor(value) {
+    set disabledColor(value: Color) {
         if (this._disabledColor === value) {
             return;
         }
@@ -318,12 +322,15 @@ export default class ButtonComponent extends Component {
      * !#zh 颜色过渡和缩放过渡时所需时间
      * @property {Number} duration
      */
-    @property
+    @property({
+        min: 0,
+        max: 10
+    })
     get duration() {
         return this._duration;
     }
 
-    set duration(value) {
+    set duration(value: number) {
         if (this._duration === value) {
             return;
         }
@@ -342,7 +349,7 @@ export default class ButtonComponent extends Component {
         return this._zoomScale;
     }
 
-    set zoomScale(value) {
+    set zoomScale(value: number) {
         if (this._zoomScale === value) {
             return;
         }
@@ -357,13 +364,13 @@ export default class ButtonComponent extends Component {
      * @property {SpriteFrame} normalSprite
      */
     @property({
-        type: cc.SpriteFrame
+        type: SpriteFrame
     })
     get normalSprite() {
         return this._normalSprite;
     }
 
-    set normalSprite(value) {
+    set normalSprite(value: SpriteFrame) {
         if (this._normalSprite === value) {
             return;
         }
@@ -378,13 +385,13 @@ export default class ButtonComponent extends Component {
      * @property {SpriteFrame} pressedSprite
      */
     @property({
-        type: cc.SpriteFrame
+        type: SpriteFrame
     })
     get pressedSprite() {
         return this._pressedSprite;
     }
 
-    set pressedSprite(value) {
+    set pressedSprite(value: SpriteFrame) {
         if (this._pressedSprite === value) {
             return;
         }
@@ -399,13 +406,13 @@ export default class ButtonComponent extends Component {
      * @property {SpriteFrame} hoverSprite
      */
     @property({
-        type: cc.SpriteFrame
+        type: SpriteFrame
     })
     get hoverSprite() {
         return this._hoverSprite;
     }
 
-    set hoverSprite(value) {
+    set hoverSprite(value: SpriteFrame) {
         if (this._hoverSprite === value) {
             return;
         }
@@ -420,13 +427,13 @@ export default class ButtonComponent extends Component {
      * @property {SpriteFrame} disabledSprite
      */
     @property({
-        type: cc.SpriteFrame
+        type: SpriteFrame
     })
     get disabledSprite() {
         return this._disabledSprite;
     }
 
-    set disabledSprite(value) {
+    set disabledSprite(value: SpriteFrame) {
         if (this._disabledSprite === value) {
             return;
         }
@@ -455,7 +462,7 @@ export default class ButtonComponent extends Component {
         return this._target;
     }
 
-    set target(value) {
+    set target(value: Node) {
         if (this._target === value) {
             return;
         }
@@ -467,16 +474,16 @@ export default class ButtonComponent extends Component {
     /**
      * !#en If Button is clicked, it will trigger event's handler
      * !#zh 按钮的点击事件列表。
-     * @property {Component.EventHandler[]} clickEvents
+     * @property {ComponentEventHandler[]} clickEvents
      */
     @property({
-        type: cc.Component.EventHandler
+        type: ComponentEventHandler
     })
     get clickEvents() {
         return this._clickEvents;
     }
 
-    set clickEvents(value) {
+    set clickEvents(value: ComponentEventHandler[]) {
         this._clickEvents = value;
     }
 
@@ -595,7 +602,7 @@ export default class ButtonComponent extends Component {
         this.node.on(cc.NodeUI.EventType.MOUSE_LEAVE, this._onMouseMoveOut, this);
     }
 
-    _getTargetSprite(target) {
+    _getTargetSprite(target: Node | null) {
         let sprite = null;
         if (target) {
             sprite = target.getComponent(cc.SpriteComponent);
@@ -611,7 +618,7 @@ export default class ButtonComponent extends Component {
     }
 
     // touch event handler
-    _onTouchBegan(event) {
+    _onTouchBegan(event: Event | null) {
         if (!this._interactable || !this.enabledInHierarchy) return;
 
         this._pressed = true;
@@ -619,7 +626,7 @@ export default class ButtonComponent extends Component {
         event.stopPropagation();
     }
 
-    _onTouchMove(event) {
+    _onTouchMove(event: Event | null) {
         if (!this._interactable || !this.enabledInHierarchy || !this._pressed) return;
         // mobile phone will not emit _onMouseMoveOut,
         // so we have to do hit test when touch moving
@@ -649,11 +656,11 @@ export default class ButtonComponent extends Component {
         event.stopPropagation();
     }
 
-    _onTouchEnded(event) {
+    _onTouchEnded(event: Event | null) {
         if (!this._interactable || !this.enabledInHierarchy) return;
 
         if (this._pressed) {
-            cc.Component.EventHandler.emitEvents(this._clickEvents, event);
+            ComponentEventHandler.emitEvents(this._clickEvents, event);
             this.node.emit('click', this);
         }
         this._pressed = false;
@@ -709,7 +716,7 @@ export default class ButtonComponent extends Component {
         return state;
     }
 
-    _updateColorTransition(state) {
+    _updateColorTransition(state: string) {
         let color = this[state + 'Color'];
         let target = this._target;
 
@@ -729,14 +736,14 @@ export default class ButtonComponent extends Component {
         }
     }
 
-    _updateSpriteTransition(state) {
+    _updateSpriteTransition(state: string) {
         let sprite = this[state + 'Sprite'];
         if (this._sprite && sprite) {
             this._sprite.spriteFrame = sprite;
         }
     }
 
-    _updateScaleTransition(state) {
+    _updateScaleTransition(state: string) {
         if (state === 'pressed') {
             this._zoomUp();
         } else {
@@ -758,7 +765,7 @@ export default class ButtonComponent extends Component {
         this._transitionFinished = false;
     }
 
-    _applyTransition(state) {
+    _applyTransition(state: string) {
         let transition = this._transition;
         if (transition === Transition.COLOR) {
             this._updateColorTransition(state);
@@ -770,7 +777,7 @@ export default class ButtonComponent extends Component {
     }
 
     _resizeNodeToTargetNode() {
-        if (CC_EDITOR && this.target) {
+        if (CC_EDITOR && this._target) {
             this.node.setContentSize(this.target.getContentSize());
         }
     }

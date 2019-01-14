@@ -24,9 +24,10 @@
  THE SOFTWARE.
  ****************************************************************************/
 
-import Component from '../../components/CCComponent';
-import { clamp01 } from '../../core/utils/misc';
-import { ccclass, menu, executionOrder, executeInEditMode, property } from '../../core/data/class-decorator';
+import Component from '../../../components/CCComponent';
+import { clamp01 } from '../../../core/utils/misc';
+import { ccclass, menu, executionOrder, executeInEditMode, property } from '../../../core/data/class-decorator';
+import SpriteComponent from './sprite-component';
 
 
 /**
@@ -84,14 +85,14 @@ var Mode = cc.Enum({
 // @executeInEditMode
 export default class ProgressBarComponent extends Component {
     @property
-    _barSprite = null;
+    _barSprite: SpriteComponent | null = null;
     @property
-    _mode = Mode.HORIZONTAL;
-    _N$totalLength = 1;
+    _mode: number = Mode.HORIZONTAL;
+    _N$totalLength: number = 1;
     @property
-    _progress = 0.1;
+    _progress: number = 0.1;
     @property
-    _reverse = false;
+    _reverse: boolean = false;
 
     /**
      * !#en The targeted Sprite which will be changed progressively.
@@ -99,13 +100,13 @@ export default class ProgressBarComponent extends Component {
      * @property {Sprite} barSprite
      */
     @property({
-        type: cc.SpriteComponent
+        type: SpriteComponent
     })
     get barSprite() {
         return this._barSprite;
     }
 
-    set barSprite(value) {
+    set barSprite(value: SpriteComponent) {
         if (this._barSprite === value) {
             return
         }
@@ -126,7 +127,7 @@ export default class ProgressBarComponent extends Component {
         return this._mode;
     }
 
-    set mode(value) {
+    set mode(value: number) {
         if (this._mode === value) {
             return;
         }
@@ -157,7 +158,7 @@ export default class ProgressBarComponent extends Component {
         return this._N$totalLength;
     }
 
-    set totalLength(value) {
+    set totalLength(value: number) {
         if (this._mode === Mode.FILLED) {
             value = clamp01(value);
         }
@@ -175,7 +176,7 @@ export default class ProgressBarComponent extends Component {
         return this._progress;
     }
 
-    set progress(value) {
+    set progress(value: number) {
         if (this._progress === value) {
             return
         }
@@ -194,7 +195,7 @@ export default class ProgressBarComponent extends Component {
         return this._reverse;
     }
 
-    set reverse(value) {
+    set reverse(value: boolean) {
         if (this._reverse === value) {
             return;
         }
@@ -307,9 +308,6 @@ export default class ProgressBarComponent extends Component {
                     cc.warn('ProgressBar non-FILLED mode only works when barSprite\'s Type is non-FILLED!');
                 }
             }
-
-
-
         }
     }
 }

@@ -25,9 +25,9 @@
  ****************************************************************************/
 
 // var Event = require('../CCNode').EventType;
-import NodeUI from '../../scene-graph/node-2d';
+import { Node } from '../../scene-graph/index'
 
-var Event = NodeUI.EventType;
+var Event = Node.EventType;
 var TOP = 1 << 0;
 var MID = 1 << 1;   // vertical center
 var BOT = 1 << 2;
@@ -447,7 +447,7 @@ function updateAlignment(node) {
     }
 }
 
-var widgetManager = cc._widgetManager = module.exports = {
+let WidgetManager = cc._widgetManager = {
     _AlignFlags: {
         TOP: TOP,
         MID: MID,       // vertical center
@@ -514,6 +514,8 @@ var widgetManager = cc._widgetManager = module.exports = {
     updateAlignment: updateAlignment,
     AlignMode: AlignMode,
 };
+
+export default WidgetManager;
 
 if (CC_EDITOR) {
     module.exports._computeInverseTransForTarget = computeInverseTransForTarget;

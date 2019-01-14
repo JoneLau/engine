@@ -25,10 +25,10 @@
  ****************************************************************************/
 
 // var WidgetManager = require('../base-ui/CCWidgetManager');
-import WidgetManager from '../base-ui/CCWidgetManager';
-import Component from '../../components/CCComponent';
-import { ccclass, property, executeInEditMode, menu, help, disallowMultiple, executionOrder } from '../../core/data/class-decorator';
-
+import WidgetManager from '../../../2d/base-ui/CCWidgetManager';
+import Component from '../../../components/CCComponent';
+import { ccclass, property, executeInEditMode, menu, executionOrder } from '../../../core/data/class-decorator';
+import { Node } from '../../../scene-graph/index'
 /**
  * !#en Enum for Widget's alignment mode, indicating when the widget should refresh.
  * !#zh Widget 的对齐模式，表示 Widget 应该何时刷新。
@@ -92,49 +92,49 @@ export default class WidgetComponent extends Component {
      * @default 0
      * @private
      */
-    _alignFlags = 0;
-    _wasAlignOnce = null;
+    _alignFlags: number = 0;
+    _wasAlignOnce: boolean = false;
     @property
-    _target = null;
+    _target: Node | null = null;
     @property
-    _isAlignTop = false;
+    _isAlignTop: boolean = false;
     @property
-    _isAlignBottom = false;
+    _isAlignBottom: boolean = false;
     @property
-    _isAlignLeft = false;
+    _isAlignLeft: boolean = false;
     @property
-    _isAlignRight = false;
+    _isAlignRight: boolean = false;
     @property
-    _left = 0;
+    _left: number = 0;
     @property
-    _right = 0;
+    _right: number = 0;
     @property
-    _top = 0;
+    _top: number = 0;
     @property
-    _bottom = 0;
+    _bottom: number = 0;
     @property
-    _horizontalCenter = 0;
+    _horizontalCenter: number = 0;
     @property
-    _verticalCenter = 0;
+    _verticalCenter: number = 0;
     @property
-    _isAbsLeft = true;
+    _isAbsLeft: boolean = true;
     @property
-    _isAbsRight = true;
+    _isAbsRight: boolean = true;
     @property
-    _isAbsTop = true;
+    _isAbsTop: boolean = true;
     @property
-    _isAbsBottom = true;
+    _isAbsBottom: boolean = true;
     @property
-    _isAbsHorizontalCenter = true;
+    _isAbsHorizontalCenter: boolean = true;
     @property
-    _isAbsVerticalCenter = true;
+    _isAbsVerticalCenter: boolean = true;
     // original size before align
     @property
-    _originalWidth = 0;
+    _originalWidth: number = 0;
     @property
-    _originalHeight = 0;
+    _originalHeight: number = 0;
     @property
-    _alignMode = AlignMode.ON_WINDOW_RESIZE;
+    _alignMode: number = AlignMode.ON_WINDOW_RESIZE;
 
     /**
      * !#en Specifies an alignment target that can only be one of the parent nodes of the current node.
@@ -536,10 +536,10 @@ export default class WidgetComponent extends Component {
     static AlignMode = AlignMode;
 
     onLoad() {
-        if (this._wasAlignOnce !== undefined) {
+        if (this._wasAlignOnce) {
             // migrate for old version
             this.alignMode = this._wasAlignOnce ? AlignMode.ONCE : AlignMode.ALWAYS;
-            this._wasAlignOnce = undefined;
+            this._wasAlignOnce = false;
         }
     }
 
@@ -551,7 +551,7 @@ export default class WidgetComponent extends Component {
         WidgetManager.remove(this);
     }
 
-    _setAlign(flag, isAlign) {
+    _setAlign(flag: number, isAlign: boolean) {
         var current = (this._alignFlags & flag) > 0;
         if (isAlign == current) {
             return;

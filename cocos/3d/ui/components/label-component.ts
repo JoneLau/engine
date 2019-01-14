@@ -24,14 +24,16 @@
  THE SOFTWARE.
  ****************************************************************************/
 // @ts-check
-import macro from '../../core/platform/CCMacro';
-import RenderComponent from '../../2d/renderable/CCRenderComponent';
-// const SpriteMaterial = renderEngine.SpriteMaterial;
-import ImageAsset from '../../assets/image-asset';
-import { vec2, vec3, mat4, color4 } from '../../core/vmath/index';
-import { ccclass, property, menu, executionOrder, executeInEditMode } from '../../core/data/class-decorator';
-// import Font from '../../3d/assets/font';
-import Font from '../../assets/CCFont';
+import macro from '../../../core/platform/CCMacro';
+import RenderComponent from './render-component';
+import ImageAsset from '../../../assets/image-asset';
+// import { vec2, vec3, mat4, color4 } from '../../../core/vmath/index';
+import { ccclass, property, menu, executionOrder, executeInEditMode, requireComponent } from '../../../core/data/class-decorator';
+import Font from '../../../assets/CCFont';
+import Texture2D from '../../../assets/texture-2d';
+import MeshBuffer from '../render-data/mesh-buffer';
+import UIRectComponent from './ui-rect-component';
+// import { value } from '../../../core/utils/js';
 
 /**
  * !#en Enum for text alignment.
@@ -139,44 +141,53 @@ const Overflow = cc.Enum({
 @ccclass('cc.LabelComponent')
 @executionOrder(100)
 @menu('UI/Label')
-// @executeInEditMode
+@requireComponent(UIRectComponent)
+@executeInEditMode
 export default class LabelComponent extends RenderComponent {
     @property
-    _useOriginalSize = true;
+    _useOriginalSize: boolean = true;
     @property
-    _string = 'label';
+    _string: string = 'label';
     @property
-    _horizontalAlign = HorizontalAlign.LEFT;
+    _horizontalAlign: number = HorizontalAlign.LEFT;
     @property
-    _verticalAlign = VerticalAlign.TOP;
+    _verticalAlign: number = VerticalAlign.TOP;
     @property
-    _actualFontSize = 0;
+    _actualFontSize: number = 0;
     @property
-    _fontSize = 40;
+    _fontSize: number = 40;
     @property
-    _fontFamily = 'Arial';
+    _fontFamily: string = 'Arial';
     @property
-    _lineHeight = 40;
+    _lineHeight: number = 40;
     @property
-    _overflow = Overflow.NONE;
+    _overflow: number = Overflow.NONE;
     @property
-    _enableWrapText = true;
+    _enableWrapText: boolean = true;
     // // 这个保存了旧项目的 file 数据
     // _N$file = null;
     @property
-    _font = null;
+    _font: Font | null = null;
     @property
-    _isSystemFontUsed = true;
+    _isSystemFontUsed: boolean = true;
     @property
-    _bmFontOriginalSize = -1;
+    _bmFontOriginalSize: number = -1;
     @property
-    _spacingX = 0;
+    _spacingX: number = 0;
     @property
-    _isItalic = false;
+    _isItalic: boolean = false;
     @property
-    _isBold = false;
+    _isBold: boolean = false;
     @property
-    _isUnderline = false;
+    _isUnderline: boolean = false;
+
+    // don't need serialize
+    _texture: Texture2D | null = null;
+    _ttfTexture: Texture2D | null = null;
+    _userDefinedFont: Font | null = null;
+    _assemblerData: object = null;
+    _assembler: object = null;
+
 
     /**
      * !#en Content string of label.
@@ -187,7 +198,7 @@ export default class LabelComponent extends RenderComponent {
     get string() {
         return this._string;
     }
-    set string(value) {
+    set string(value: string) {
         value = value.toString();
         if (this._string === value) {
             return
@@ -210,10 +221,12 @@ export default class LabelComponent extends RenderComponent {
         return this._horizontalAlign;
     }
 
-    set horizontalAlign(value) {
-        if (this.horizontalAlign === oldValue) {
+    set horizontalAlign(value: number) {
+        if (this._horizontalAlign === value) {
             return
-        };
+        }
+
+        this._horizontalAlign = value;
         this._updateRenderData();
     }
 
@@ -229,7 +242,7 @@ export default class LabelComponent extends RenderComponent {
         return this._verticalAlign;
     }
 
-    set verticalAlign(value) {
+    set verticalAlign(value: number) {
         if (this._verticalAlign === value) {
             return
         };
@@ -260,7 +273,7 @@ export default class LabelComponent extends RenderComponent {
         return this._fontSize;
     }
 
-    set fontSize(value) {
+    set fontSize(value: number) {
         if (this._fontSize === value) {
             return
         };
@@ -279,11 +292,12 @@ export default class LabelComponent extends RenderComponent {
         return this._fontFamily;
     }
 
-    set fontFamily(oldValue) {
-        if (this.fontFamily === oldValue) {
+    set fontFamily(value: string) {
+        if (this._fontFamily === value) {
             return
         };
 
+        this._fontFamily = value;
         this._updateRenderData();
     }
 
@@ -296,7 +310,7 @@ export default class LabelComponent extends RenderComponent {
     get lineHeight() {
         return this._lineHeight;
     }
-    set lineHeight(value) {
+    set lineHeight(value: number) {
         if (this._lineHeight === value) {
             return
         };
@@ -315,11 +329,12 @@ export default class LabelComponent extends RenderComponent {
         return this._overflow;
     }
 
-    set overflow(oldValue) {
-        if (this.overflow === oldValue) {
+    set overflow(value: number) {
+        if (this._overflow === value) {
             return
         };
 
+        this._overflow = value;
         this._updateRenderData();
     }
 
@@ -333,7 +348,7 @@ export default class LabelComponent extends RenderComponent {
     get enableWrapText() {
         return this._enableWrapText;
     }
-    set enableWrapText(value) {
+    set enableWrapText(value: boolean) {
         if (this._enableWrapText === value) {
             return
         };
@@ -357,7 +372,7 @@ export default class LabelComponent extends RenderComponent {
         return this._font;
     }
 
-    set font(value) {
+    set font(value: Font | null) {
         if (this._font === value) return;
 
         //if delete the font, we should change isSystemFontUsed to true
@@ -385,7 +400,7 @@ export default class LabelComponent extends RenderComponent {
             this.destroyRenderData();
             this._renderData = null;
         }
-        this._fontAtlas = null;
+        // this._fontAtlas = null;
         this._updateAssembler();
         this._applyFontTexture(true);
         this._updateRenderData();
@@ -403,7 +418,7 @@ export default class LabelComponent extends RenderComponent {
         return this._isSystemFontUsed;
     }
 
-    set useSystemFont(value) {
+    set useSystemFont(value: boolean) {
         if (this._isSystemFontUsed === value) {
             return
         };
@@ -437,7 +452,7 @@ export default class LabelComponent extends RenderComponent {
         return this._spacingX;
     }
 
-    set spacingX(value) {
+    set spacingX(value: number) {
         if (this._spacingX === value) {
             return
         }
@@ -455,7 +470,7 @@ export default class LabelComponent extends RenderComponent {
         return this._isBold;
     }
 
-    set isBold(value) {
+    set isBold(value: boolean) {
         if (this._isBold === value) {
             return;
         }
@@ -472,7 +487,7 @@ export default class LabelComponent extends RenderComponent {
         return this._isItalic;
     }
 
-    set isItalic(value) {
+    set isItalic(value: boolean) {
         if (this._isItalic === value) {
             return
         }
@@ -489,7 +504,7 @@ export default class LabelComponent extends RenderComponent {
         return this._isUnderline;
     }
 
-    set isUnderline(value) {
+    set isUnderline(value: boolean) {
         if (this._isUnderline === value) {
             return
         }
@@ -552,7 +567,7 @@ export default class LabelComponent extends RenderComponent {
         // this._super();
     }
 
-    updateRenderData(buffer) {
+    updateRenderData(buffer: MeshBuffer) {
         if (!this._assembler) {
             return;
         }
@@ -593,7 +608,7 @@ export default class LabelComponent extends RenderComponent {
         }
     }
 
-    _activateMaterial(force) {
+    _activateMaterial(force: boolean) {
         let material = this.material;
         if (material && !force) {
             return;
@@ -617,7 +632,7 @@ export default class LabelComponent extends RenderComponent {
         // this._updateMaterial(material);
     }
 
-    _applyFontTexture(force) {
+    _applyFontTexture(force: boolean) {
         let font = this._font;
         if (font instanceof cc.BitmapFont) {
             let spriteFrame = font.spriteFrame;
@@ -672,12 +687,12 @@ export default class LabelComponent extends RenderComponent {
             // this._super();
         }
         else {
-            this._updateRenderData();
+            this._updateRenderData(false);
             // this.node._renderFlag &= ~RenderFlow.FLAG_COLOR;
         }
     }
 
-    _updateRenderData(force) {
+    _updateRenderData(force: boolean = false) {
         let renderData = this._renderData;
         if (renderData) {
             renderData.vertDirty = true;

@@ -25,7 +25,7 @@
 
 import { ValueType } from './value-type';
 import CCClass from '../data/class';
-import {mat4} from '../vmath';
+import { mat4 } from '../vmath';
 
 /**
  * !#en Representation of 4*4 matrix.
@@ -59,11 +59,11 @@ export default class Mat4 extends ValueType {
      * @param {Number} m32 Component in column 3, row 2 position (index 14)
      * @param {Number} m33 Component in column 3, row 3 position (index 15)
      */
-    constructor (
-      m00 = 1, m01 = 0, m02 = 0, m03 = 0,
-      m04 = 0, m05 = 1, m06 = 0, m07 = 0,
-      m08 = 0, m09 = 0, m10 = 1, m11 = 0,
-      m12 = 0, m13 = 0, m14 = 0, m15 = 1) {
+    constructor(
+        m00 = 1, m01 = 0, m02 = 0, m03 = 0,
+        m04 = 0, m05 = 1, m06 = 0, m07 = 0,
+        m08 = 0, m09 = 0, m10 = 1, m11 = 0,
+        m12 = 0, m13 = 0, m14 = 0, m15 = 1) {
         super();
         let t = this;
         if (typeof m00 === 'object') {
@@ -84,7 +84,7 @@ export default class Mat4 extends ValueType {
      * @method clone
      * @return {Mat4}
      */
-    clone () {
+    clone() {
         let t = this;
         return new Mat4(
             t.m00, t.m01, t.m02, t.m03,
@@ -101,7 +101,7 @@ export default class Mat4 extends ValueType {
      * @return {Mat4} returns this
      * @chainable
      */
-    set (s) {
+    set(s) {
         let t = this;
         t.m00 = s.m00;
         t.m01 = s.m01;
@@ -129,7 +129,7 @@ export default class Mat4 extends ValueType {
      * @param {Mat4} other
      * @return {Boolean}
      */
-    equals (other) {
+    equals(other) {
         return mat4.exactEquals(this, other);
     }
 
@@ -142,7 +142,7 @@ export default class Mat4 extends ValueType {
      * @param {Mat4} other
      * @return {Boolean}
      */
-    fuzzyEquals (other) {
+    fuzzyEquals(other) {
         return mat4.equals(this, other);
     }
 
@@ -152,7 +152,7 @@ export default class Mat4 extends ValueType {
      * @method toString
      * @return {string}
      */
-    toString () {
+    toString() {
         let t = this;
         return "[\n" +
             t.m00 + ", " + t.m01 + ", " + t.m02 + ", " + t.m03 + ",\n" +
@@ -169,7 +169,7 @@ export default class Mat4 extends ValueType {
      * @returns {Mat4} self
      * @chainable
      */
-    identity () {
+    identity() {
         return mat4.identity(this);
     }
 
@@ -179,7 +179,7 @@ export default class Mat4 extends ValueType {
      * @param {Mat4} [out] the receiving matrix, you can pass the same matrix to save result to itself, if not provided, a new matrix will be created.
      * @returns {Mat4} out
      */
-    transpose (out) {
+    transpose(out) {
         out = out || new cc.Mat4();
         return mat4.transpose(out, this);
     }
@@ -190,7 +190,7 @@ export default class Mat4 extends ValueType {
      * @param {Mat4} [out] the receiving matrix, you can pass the same matrix to save result to itself, if not provided, a new matrix will be created.
      * @returns {Mat4} out
      */
-    invert (out) {
+    invert(out) {
         out = out || new cc.Mat4();
         return mat4.invert(out, this);
     }
@@ -201,7 +201,7 @@ export default class Mat4 extends ValueType {
      * @param {Mat4} [out] the receiving matrix, you can pass the same matrix to save result to itself, if not provided, a new matrix will be created.
      * @returns {Mat4} out
      */
-    adjoint (out) {
+    adjoint(out) {
         out = out || new cc.Mat4();
         return mat4.adjoint(out, this);
     }
@@ -211,7 +211,7 @@ export default class Mat4 extends ValueType {
      * @method determinant
      * @returns {Number} determinant of a
      */
-    determinant () {
+    determinant() {
         return mat4.determinant(this);
     }
 
@@ -222,7 +222,7 @@ export default class Mat4 extends ValueType {
      * @param {Mat4} [out] the receiving matrix, you can pass the same matrix to save result to itself, if not provided, a new matrix will be created.
      * @returns {Mat4} out
      */
-    add (other, out) {
+    add(other, out) {
         out = out || new cc.Mat4();
         return mat4.add(out, this, other);
     }
@@ -234,7 +234,7 @@ export default class Mat4 extends ValueType {
      * @param {Mat4} [out] the receiving matrix, you can pass the same matrix to save result to itself, if not provided, a new matrix will be created
      * @returns {Mat4} out
      */
-    sub (other, out) {
+    sub(other, out) {
         out = out || new cc.Mat4();
         return mat4.subtract(out, this, other);
     }
@@ -246,7 +246,7 @@ export default class Mat4 extends ValueType {
      * @param {Mat4} [out] the receiving matrix, you can pass the same matrix to save result to itself, if not provided, a new matrix will be created
      * @returns {Mat4} out
      */
-    mul (other, out) {
+    mul(other, out) {
         out = out || new cc.Mat4();
         return mat4.multiply(out, this, other);
     }
@@ -258,7 +258,7 @@ export default class Mat4 extends ValueType {
      * @param {Mat4} [out] the receiving matrix, you can pass the same matrix to save result to itself, if not provided, a new matrix will be created
      * @returns {Mat4} out
      */
-    mulScalar (number, out) {
+    mulScalar(number, out) {
         out = out || new cc.Mat4();
         return mat4.mulScalar(out, this, number);
     }
@@ -270,7 +270,7 @@ export default class Mat4 extends ValueType {
      * @param {Mat4} [out] the receiving matrix, you can pass the same matrix to save result to itself, if not provided, a new matrix will be created
      * @returns {Mat4} out
      */
-    translate (v, out) {
+    translate(v, out) {
         out = out || new cc.Mat4();
         return mat4.translate(out, this, v);
     }
@@ -282,7 +282,7 @@ export default class Mat4 extends ValueType {
      * @param {Mat4} [out] the receiving matrix, you can pass the same matrix to save result to itself, if not provided, a new matrix will be created
      * @returns {Mat4} out
      */
-    scale (v, out) {
+    scale(v, out) {
         out = out || new cc.Mat4();
         return mat4.scale(out, this, v);
     }
@@ -295,7 +295,7 @@ export default class Mat4 extends ValueType {
      * @param {Mat4} [out] the receiving matrix, you can pass the same matrix to save result to itself, if not provided, a new matrix will be created
      * @returns {Mat4} out
      */
-    rotate (rad, axis, out) {
+    rotate(rad, axis, out) {
         out = out || new cc.Mat4();
         return mat4.rotate(out, this, rad, axis);
     }
@@ -306,7 +306,7 @@ export default class Mat4 extends ValueType {
      * @param  {Vec3} out Vector to receive translation component, if not provided, a new vec3 will be created
      * @return {Vec3} out
      */
-    getTranslation (out) {
+    getTranslation(out) {
         out = out || new cc.Vec3();
         return mat4.getTranslation(out, this);
     }
@@ -317,7 +317,7 @@ export default class Mat4 extends ValueType {
      * @param  {Vec3} out Vector to receive scale component, if not provided, a new vec3 will be created
      * @return {Vec3} out
      */
-    getScale (out) {
+    getScale(out) {
         out = out || new cc.Vec3();
         return mat4.getScaling(out, this);
     }
@@ -328,7 +328,7 @@ export default class Mat4 extends ValueType {
      * @param  {Quat} out Vector to receive rotation component, if not provided, a new quaternion object will be created
      * @return {Quat} out
      */
-    getRotation (out) {
+    getRotation(out) {
         out = out || new cc.Quat();
         return mat4.getRotation(out, this);
     }
@@ -342,7 +342,7 @@ export default class Mat4 extends ValueType {
      * @returns {Mat4} the current mat4 object
      * @chainable
      */
-    fromRTS (q, v, s) {
+    fromRTS(q, v, s) {
         return mat4.fromRTS(this, q, v, s);
     }
 
@@ -353,7 +353,7 @@ export default class Mat4 extends ValueType {
      * @returns {Mat4} the current mat4 object
      * @chainable
      */
-    fromQuat (quat) {
+    fromQuat(quat) {
         return mat4.fromQuat(this, quat);
     }
 }
@@ -391,6 +391,6 @@ cc.Mat4 = Mat4;
  * @param {Number} m33 Component in column 3, row 3 position (index 15)
  * @return {Mat4}
  */
-cc.mat4 = function mat4 (m00, m01, m02, m03, m10, m11, m12, m13, m20, m21, m22, m23, m30, m31, m32, m33) {
+cc.mat4 = function mat4(m00 = 1, m01 = 0, m02 = 0, m03 = 0, m10 = 0, m11 = 1, m12 = 0, m13 = 0, m20 = 0, m21 = 0, m22 = 1, m23 = 0, m30 = 0, m31 = 0, m32 = 0, m33 = 1) {
     return new Mat4(m00, m01, m02, m03, m10, m11, m12, m13, m20, m21, m22, m23, m30, m31, m32, m33);
 };

@@ -22,8 +22,8 @@
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE.
  ****************************************************************************/
-
-import SpriteComponent from '../../CCSprite';
+//@ts-check
+import SpriteComponent from '../../components/sprite-component';
 const FillType = SpriteComponent.FillType;
 
 // const dynamicAtlasManager = require('../../../../utils/dynamic-atlas/manager');

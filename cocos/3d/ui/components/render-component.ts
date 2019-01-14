@@ -23,13 +23,13 @@
  THE SOFTWARE.
  ****************************************************************************/
 
-import RenderableComponent from '../../3d/framework/renderable-component';
-import BlendFactor from '../../core/platform/CCMacro';
-import RenderData from '../../3d/ui/renderData';
-import gfx from '../../renderer/gfx/index';
-import { ccclass, property, menu, executionOrder, executeInEditMode } from '../../core/data/class-decorator';
-import { color4 } from '../../core/vmath/index';
-import macro from '../../core/platform/CCMacro';
+import RenderableComponent from '../../framework/renderable-component';
+import BlendFactor from '../../../core/platform/CCMacro';
+import RenderData from '../render-data/renderData';
+// import gfx from '../../renderer/gfx/index';
+import { ccclass, property, menu, executionOrder, executeInEditMode } from '../../../core/data/class-decorator';
+import { Color } from '../../../core/value-types/index';
+import macro from '../../../core/platform/CCMacro';
 
 /**
  * !#en
@@ -42,16 +42,16 @@ import macro from '../../core/platform/CCMacro';
  */
 @ccclass('cc.RenderComponent')
 export default class RenderComponent extends RenderableComponent {
-    _srcBlendFactor = macro.BlendFactor.SRC_ALPHA;
-    _dstBlendFactor = macro.BlendFactor.ONE_MINUS_SRC_ALPHA;
+    _srcBlendFactor: number = macro.BlendFactor.SRC_ALPHA;
+    _dstBlendFactor: number = macro.BlendFactor.ONE_MINUS_SRC_ALPHA;
     @property
-    _color = color4.create();
-    _renderData = null;
-    _allocedDatas = [];
-    _vertexFormat = null;
-    _toPostHandle = false;
-    _renderDataPoolID = -1;
-    _viewID = -1;
+    _color: Color = Color.WHITE;
+    _renderData: RenderData | null = null;
+    // _allocedDatas = [];
+    // _vertexFormat = null;
+    // _toPostHandle = false;
+    _renderDataPoolID: number = -1;
+    _viewID: number = -1;
 
     /**
    * !#en specify the source Blend Factor, this will generate a custom material object, please pay attention to the memory cost.
@@ -126,10 +126,11 @@ export default class RenderComponent extends RenderableComponent {
     }
 
     onDestroy() {
-        for (let i = 0, l = this._allocedDatas.length; i < l; i++) {
-            RenderData.free(this._allocedDatas[i]);
-        }
-        this._allocedDatas.length = 0;
+        // for (let i = 0, l = this._allocedDatas.length; i < l; i++) {
+        //     RenderData.free(this._allocedDatas[i]);
+        // }
+        // this._allocedDatas.length = 0;
+        this.destroyRenderData();
         this.material = null;
         this._renderData = null;
     }
@@ -171,7 +172,7 @@ export default class RenderComponent extends RenderableComponent {
 
     requestRenderData() {
         let data = RenderData.add();
-        this._allocedDatas.push(data);
+        // this._allocedDatas.push(data);
         this._renderData = data.data;
         this._renderDataPoolID = data.pooID;
         return this._renderData;
@@ -237,4 +238,3 @@ export default class RenderComponent extends RenderableComponent {
 RenderComponent._assembler = null;
 // RenderComponent._postAssembler = null;
 
-cc.RenderComponent = RenderComponent;

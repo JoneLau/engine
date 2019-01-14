@@ -24,14 +24,17 @@
  THE SOFTWARE.
  ****************************************************************************/
 
-import { ccclass, menu, executionOrder, executeInEditMode, property } from '../../../core/data/class-decorator';
-import Component from '../../../components/CCComponent';
-import Color from '../../../core/value-types/color';
-import macro from '../../../core/platform/CCMacro';
-import EditBoxImpl from './CCEditBoxImpl';
-import LabelComponent from './../../../3d/ui/CCLabel';
+import { ccclass, menu, executionOrder, executeInEditMode, property } from '../../../../core/data/class-decorator';
+import Component from '../../../../components/CCComponent';
+import Color from '../../../../core/value-types/color';
+import macro from '../../../../core/platform/CCMacro';
+import EditBoxImpl from './edit-box-impl';
+import LabelComponent from '../label-component';
 // import { InputMode, InputFlag, KeyboardReturnType } from './types';
 import * as Types from './types';
+import SpriteFrame from '../../../../assets/CCSpriteFrame';
+import ComponentEventHandler from '../../../../components/CCComponentEventHandler';
+import SpriteComponent from '../sprite-component';
 const InputMode = Types.InputMode;
 const InputFlag = Types.InputFlag;
 const KeyboardReturnType = Types.KeyboardReturnType;
@@ -60,43 +63,48 @@ function capitalizeFirstLetter(string) {
 @executeInEditMode
 export default class EditBoxComponent extends Component {
     @property
-    _useOriginalSize = true;
+    _useOriginalSize: boolean = true;
     @property
-    _string = '';
+    _string: string = '';
     @property
-    _tabIndex = 0;
+    _tabIndex: number = 0;
     @property
-    _backgroundImage = null;
+    _backgroundImage: SpriteFrame | null = null;
     @property
-    _returnType = KeyboardReturnType.DEFAULT;
+    _returnType: number = KeyboardReturnType.DEFAULT;
     @property
-    _inputFlag = InputFlag.DEFAULT;
+    _inputFlag: number = InputFlag.DEFAULT;
     @property
-    _inputMode = InputMode.SINGLE_LINE;
+    _inputMode: number = InputMode.SINGLE_LINE;
     @property
-    _fontSize = 20;
+    _fontSize: number = 20;
     @property
-    _lineHeight = 40;
+    _lineHeight: number = 40;
     @property
-    _maxLength = 20;
+    _maxLength: number = 20;
     @property
-    _fontColor = Color.WHITE;
+    _fontColor: Color = Color.WHITE;
     @property
-    _placeholder = 'Enter text here...';
+    _placeholder: string = 'Enter text here...';
     @property
-    _placeholderFontSize = 20;
+    _placeholderFontSize: number = 20;
     @property
-    _placeholderFontColor = Color.GRAY;
+    _placeholderFontColor: Color = Color.GRAY;
     @property
-    _stayOnTop = false;
+    _stayOnTop: boolean = false;
     @property
-    _editingDidBegan = [];
+    editingDidBegan: ComponentEventHandler[] = [];
     @property
-    _editingDidEnded = [];
+    editingDidEnded: ComponentEventHandler[] = [];
     @property
-    _editingReturn = [];
+    editingReturn: ComponentEventHandler[] = [];
     @property
-    _textChanged = [];
+    textChanged: ComponentEventHandler[] = [];
+
+    _impl: EditBoxImpl | null = null;
+    _textLabel: LabelComponent | null = null;
+    _placeholderLabel: LabelComponent | null = null;
+    _background: SpriteComponent | null = null;
 
     /**
      * !#en Input string of EditBox.
@@ -108,7 +116,7 @@ export default class EditBoxComponent extends Component {
         return this._string;
     }
 
-    set string(value) {
+    set string(value: string) {
         if (this._maxLength >= 0 && value.length >= this._maxLength) {
             value = value.slice(0, this._maxLength);
         }
@@ -125,13 +133,13 @@ export default class EditBoxComponent extends Component {
      * @property {SpriteFrame} backgroundImage
      */
     @property({
-        type: cc.SpriteFrame
+        type: SpriteFrame
     })
     get backgroundImage() {
         return this._backgroundImage;
     }
 
-    set backgroundImage(value) {
+    set backgroundImage(value: SpriteFrame | null) {
         if (this._backgroundImage === value) {
             return;
         }
@@ -157,7 +165,7 @@ export default class EditBoxComponent extends Component {
         return this._returnType;
     }
 
-    set returnType(value) {
+    set returnType(value: number) {
         this._returnType = value;
         if (this._impl) {
             this._impl.returnType = this._returnType;
@@ -178,7 +186,7 @@ export default class EditBoxComponent extends Component {
         return this._inputFlag;
     }
 
-    set inputFlag(value) {
+    set inputFlag(value: number) {
         this._inputFlag = value;
         if (this._impl) {
             this._impl.setInputFlag(this._inputFlag);
@@ -201,7 +209,7 @@ export default class EditBoxComponent extends Component {
         return this._inputMode;
     }
 
-    set inputMode(value) {
+    set inputMode(value: number) {
         this._inputMode = value;
         if (this._impl) {
             this._impl.setInputMode(this._inputMode);
@@ -218,7 +226,7 @@ export default class EditBoxComponent extends Component {
         return this._fontSize;
     }
 
-    set fontSize(value) {
+    set fontSize(value: number) {
         if (this._fontSize === value) {
             return;
         }
@@ -243,7 +251,7 @@ export default class EditBoxComponent extends Component {
         return this._lineHeight;
     }
 
-    set lineHeight(value) {
+    set lineHeight(value: number) {
         if (this._lineHeight === value) {
             return;
         }
@@ -267,7 +275,7 @@ export default class EditBoxComponent extends Component {
         return this._fontColor;
     }
 
-    set fontColor(value) {
+    set fontColor(value: Color) {
         if (this._fontColor === value) {
             return
         }
@@ -292,7 +300,7 @@ export default class EditBoxComponent extends Component {
         return this._placeholder;
     }
 
-    set placeholder(value) {
+    set placeholder(value: string) {
         if (this._placeholder === value) {
             return;
         }
@@ -316,7 +324,7 @@ export default class EditBoxComponent extends Component {
         return this._placeholderFontSize;
     }
 
-    set placeholderFontSize(value) {
+    set placeholderFontSize(value: number) {
         if (this._placeholderFontSize === value) {
             return;
         }
@@ -337,7 +345,7 @@ export default class EditBoxComponent extends Component {
         return this._placeholderFontColor;
     }
 
-    set placeholderFontColor(value) {
+    set placeholderFontColor(value: Color) {
         if (this._placeholderFontColor === value) {
             return;
         }
@@ -362,7 +370,7 @@ export default class EditBoxComponent extends Component {
     get maxLength() {
         return this._maxLength;
     }
-    set maxLength(value) {
+    set maxLength(value: number) {
         if (this._maxLength === value) {
             return
         }
@@ -384,7 +392,7 @@ export default class EditBoxComponent extends Component {
         return this._stayOnTop;
     }
 
-    set stayOnTop(value) {
+    set stayOnTop(value: boolean) {
         this._stayOnTop = value;
         if (this._impl) {
             this._updateStayOnTop();
@@ -401,7 +409,7 @@ export default class EditBoxComponent extends Component {
         return this._tabIndex;
     }
 
-    set tabIndex(value) {
+    set tabIndex(value: number) {
         this._tabIndex = value;
         if (this._impl) {
             this._impl.setTabIndex(value);
@@ -413,64 +421,68 @@ export default class EditBoxComponent extends Component {
      * !#zh 开始编辑文本输入框触发的事件回调。
      * @property {Component.EventHandler[]} editingDidBegan
      */
-    @property({
-        type: [cc.Component.EventHandler]
-    })
-    get editingDidBegan() {
-        return this._editingDidBegan;
-    }
+    // @property({
+    //     default: [],
+    //     type: [ComponentEventHandler]
+    // })
+    // get editingDidBegan() {
+    //     return this._editingDidBegan;
+    // }
 
-    set editingDidBegan(value) {
-        this._editingDidBegan = value;
-    }
+    // set editingDidBegan(value: ComponentEventHandler[]) {
+    //     this._editingDidBegan = value;
+    // }
 
     /**
      * !#en The event handler to be called when EditBox text changes.
      * !#zh 编辑文本输入框时触发的事件回调。
      * @property {Component.EventHandler[]} textChanged
      */
-    @property({
-        type: [cc.Component.EventHandler]
-    })
-    get textChanged() {
-        return this._textChanged;
-    }
+    // @property({
+    //     default: [],
+    //     type: [ComponentEventHandler]
+    // })
+    // get textChanged() {
+    //     return this._textChanged;
+    // }
 
-    set textChanged(value) {
-        this._textChanged = value;
-    }
+    // set textChanged(value: ComponentEventHandler[]) {
+    //     this._textChanged = value;
+    // }
 
     /**
      * !#en The event handler to be called when EditBox edit ends.
      * !#zh 结束编辑文本输入框时触发的事件回调。
      * @property {Component.EventHandler[]} editingDidEnded
      */
-    @property({
-        type: [cc.Component.EventHandler]
-    })
-    get editingDidEnded() {
-        return this._editingDidEnded;
-    }
+    // @property({
+    //     default: [],
+    //     type: [ComponentEventHandler]
+    // })
+    // get editingDidEnded() {
+    //     return this._editingDidEnded;
+    // }
 
-    set editingDidEnded(value) {
-        this._editingDidEnded = value;
-    }
+    // set editingDidEnded(value: ComponentEventHandler[]) {
+    //     this._editingDidEnded = value;
+    // }
 
     /**
      * !#en The event handler to be called when return key is pressed. Windows is not supported.
      * !#zh 当用户按下回车按键时的事件回调，目前不支持 windows 平台
      * @property {Component.EventHandler[]} editingReturn
      */
-    @property({
-        type: [cc.Component.EventHandler]
-    })
-    get editingReturn() {
-        return this._editingReturn;
-    }
+    // @property({
+    //     default: [],
+    //     type: [ComponentEventHandler]
+    // })
+    // get editingReturn() {
+    //     return this._editingReturn;
+    // }
 
-    set editingReturn(value) {
-        this._editingReturn = value;
-    }
+    // set editingReturn(value: ComponentEventHandler[]) {
+    //     this._editingReturn = value;
+    // }
 
     static _EditBoxImpl = EditBoxImpl;
     static KeyboardReturnType = KeyboardReturnType;
@@ -716,7 +728,7 @@ export default class EditBoxComponent extends Component {
 
     editBoxEditingDidBegan() {
         this._hideLabels();
-        cc.Component.EventHandler.emitEvents(this.editingDidBegan, this);
+        ComponentEventHandler.emitEvents(this.editingDidBegan, this);
         this.node.emit('editing-did-began', this);
     }
 
@@ -724,19 +736,19 @@ export default class EditBoxComponent extends Component {
         if (!this.stayOnTop) {
             this._showLabels();
         }
-        cc.Component.EventHandler.emitEvents(this.editingDidEnded, this);
+        ComponentEventHandler.emitEvents(this.editingDidEnded, this);
         this.node.emit('editing-did-ended', this);
     }
 
     editBoxTextChanged(text) {
         text = this._updateLabelStringStyle(text, true);
         this.string = text;
-        cc.Component.EventHandler.emitEvents(this.textChanged, text, this);
+        ComponentEventHandler.emitEvents(this.textChanged, text, this);
         this.node.emit('text-changed', this);
     }
 
     editBoxEditingReturn() {
-        cc.Component.EventHandler.emitEvents(this.editingReturn, this);
+        ComponentEventHandler.emitEvents(this.editingReturn, this);
         this.node.emit('editing-return', this);
     }
 

@@ -26,11 +26,15 @@
  THE SOFTWARE.
  ****************************************************************************/
 
-import { ccclass } from '../../../core/data/class-decorator';
-import { contains } from '../../../core/utils/misc';
-import macro from '../../../core/platform/CCMacro';
+import { ccclass } from '../../../../core/data/class-decorator';
+import { contains } from '../../../../core/utils/misc';
+import macro from '../../../../core/platform/CCMacro';
 // import { InputMode, InputFlag, KeyboardReturnType } from './types';
 import * as Types from './types';
+import * as math from '../../../../core/vmath';
+import { Size, Color } from '../../../../core/value-types';
+import { Node } from '../../../../scene-graph';
+import EditBoxComponent from './edit-box-component';
 const InputMode = Types.InputMode;
 const InputFlag = Types.InputFlag;
 const KeyboardReturnType = Types.KeyboardReturnType;
@@ -42,9 +46,8 @@ let DELAY_TIME = 400;
 let FOCUS_DELAY_UC = 400;
 let FOCUS_DELAY_FIREFOX = 0;
 
-let math = cc.vmath;
-let _matrix = math.mat4.create();
-let _matrix_temp = math.mat4.create();
+let _matrix = cc.mat4();
+let _matrix_temp = cc.mat4();
 let _vec3 = cc.v3();
 
 let _currentEditBoxImpl = null;
@@ -79,25 +82,24 @@ function getKeyboardReturnType(type) {
 
 @ccclass
 export default class EditBoxImpl {
-    constructor() {
-        this._delegate = null;
-        this._inputMode = -1;
-        this._inputFlag = -1;
-        this._returnType = KeyboardReturnType.DEFAULT;
-        this._maxLength = 50;
-        this._text = '';
-        this._placeholderText = '';
-        this._alwaysOnTop = false;
-        this._size = cc.size();
-        this._node = null;
-        this._editing = false;
-
-        this.__eventListeners = {};
-        this.__fullscreen = false;
-        this.__autoResize = false;
-        this.__rotateScreen = false;
-        this.__orientationChanged = null;
-    }
+    _delegate: EditBoxComponent | null = null;
+    _inputMode: number = -1;
+    _inputFlag: number = -1;
+    _returnType: number = KeyboardReturnType.DEFAULT;
+    _maxLength: number = 50;
+    _text: string = '';
+    _placeholderText: string = '';
+    _alwaysOnTop: boolean = false;
+    _size: Size = cc.size();
+    _node: Node = null;
+    _editing: boolean = false;
+    __eventListeners: object = {};
+    __fullscreen: boolean = false;
+    __autoResize: boolean = false;
+    __rotateScreen: boolean = false;
+    __orientationChanged: Function | null = null;
+    _edTxt: HTMLElement | null = null;
+    _textColor: Color = Color.WHITE;
 
     onEnable() {
         if (!this._edTxt) {
@@ -595,7 +597,7 @@ function _inputValueHandle(input, editBoxImpl) {
     }
 }
 
-function registerInputEventListener(tmpEdTxt, editBoxImpl, isTextarea) {
+function registerInputEventListener(tmpEdTxt: HTMLElement, editBoxImpl: EditBoxImpl, isTextarea: boolean = false) {
     let inputLock = false;
     let cbs = editBoxImpl.__eventListeners;
     cbs.compositionstart = function () {
