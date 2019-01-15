@@ -36,7 +36,7 @@ export class ValueType {
     /**
      * !#en This method returns an exact copy of current value.
      * !#zh 克隆当前值，该方法返回一个新对象，新对象的值和原对象相等。
-     * @method clone
+     *
      */
     public clone (): ValueType {
         cc.errorID('0100', js.getClassName(this) + '.clone');

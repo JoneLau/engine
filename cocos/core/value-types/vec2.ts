@@ -66,8 +66,8 @@ export default class Vec2 extends ValueType {
      * see {{#crossLink "cc/vec2:method"}}cc.v2{{/crossLink}} or {{#crossLink "cc/p:method"}}cc.p{{/crossLink}}
      * !#zh
      * 构造函数，可查看 {{#crossLink "cc/vec2:method"}}cc.v2{{/crossLink}} 或者 {{#crossLink "cc/p:method"}}cc.p{{/crossLink}}
-     * @param {number} [x=0]
-     * @param {number} [y=0]
+     * @param [x=0]
+     * @param [y=0]
      */
     constructor (x?: number | Vec2, y?: number) {
         super();
@@ -305,7 +305,7 @@ export default class Vec2 extends ValueType {
     /**
      * !#en Multiplies two vectors, and returns the new result.
      * !#zh 分量相乘，并返回新的结果。
-     * @method scale
+     * 
      * @param vector
      * @param [out] - optional, the receiving vector, you can pass the same vec2
      * to save result to itself, if not provided, a new vec2 will be created
@@ -342,7 +342,7 @@ export default class Vec2 extends ValueType {
     /**
      * !#en Divides by a number, and returns the new result.
      * !#zh 向量除法，并返回新的结果。
-     * @method div
+     * 
      * @param divisor
      * @param [out] - optional, the receiving vector, you can pass the same vec2
      * to save result to itself, if not provided, a new vec2 will be created
@@ -658,17 +658,4 @@ function v2 (x?: number | Vec2, y?: number) {
 
 export { v2 };
 
-/**
- * !#en The convenience method to create a new {{#crossLink "Vec2"}}cc.Vec2{{/crossLink}}.
- * !#zh 通过该简便的函数进行创建 {{#crossLink "Vec2"}}cc.Vec2{{/crossLink}} 对象。
- * @method v2
- * @param {Number|Object} [x=0]
- * @param {Number} [y=0]
- * @return {Vec2}
- * @example
- * var v1 = cc.v2();
- * var v2 = cc.v2(0, 0);
- * var v3 = cc.v2(v2);
- * var v4 = cc.v2({x: 100, y: 100});
- */
 cc.v2 = v2;
