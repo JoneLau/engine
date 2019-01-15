@@ -77,13 +77,13 @@ let Mask = cc.Class({
     editor: CC_EDITOR && {
         menu: 'i18n:MAIN_MENU.component.renderers/Mask',
         help: 'i18n:COMPONENT.help_url.mask',
-        inspector: 'packages://inspector/inspectors/comps/mask.js'
+        inspector: 'packages://inspector/inspectors/comps/mask.js',
     },
 
     properties: {
         _spriteFrame: {
             default: null,
-            type: cc.SpriteFrame
+            type: cc.SpriteFrame,
         },
 
         /**
@@ -96,10 +96,10 @@ let Mask = cc.Class({
          */
         _type: MaskType.RECT,
         type: {
-            get: function () {
+            get () {
                 return this._type;
             },
-            set: function (value) {
+            set (value) {
                 this._type = value;
                 if (this._type !== MaskType.IMAGE_STENCIL) {
                     this.spriteFrame = null;
@@ -128,17 +128,16 @@ let Mask = cc.Class({
         spriteFrame: {
             type: cc.SpriteFrame,
             tooltip: CC_DEV && 'i18n:COMPONENT.mask.spriteFrame',
-            get: function () {
+            get () {
                 return this._spriteFrame;
             },
-            set: function (value) {
-                let lastSprite = this._spriteFrame;
+            set (value) {
+                const lastSprite = this._spriteFrame;
                 if (CC_EDITOR) {
                     if ((lastSprite && lastSprite._uuid) === (value && value._uuid)) {
                         return;
                     }
-                }
-                else {
+                } else {
                     if (lastSprite === value) {
                         return;
                     }
@@ -171,7 +170,7 @@ let Mask = cc.Class({
             range: [0, 1, 0.1],
             slide: true,
             tooltip: CC_DEV && 'i18n:COMPONENT.mask.alphaThreshold',
-            notify: function () {
+            notify () {
                 if (cc.game.renderType === cc.game.RENDER_TYPE_CANVAS) {
                     cc.warnID(4201);
                     return;
@@ -180,7 +179,7 @@ let Mask = cc.Class({
                     this._material.alphaThreshold = this.alphaThreshold;
                     this._material.updateHash();
                 }
-            }
+            },
         },
 
         /**
@@ -194,12 +193,12 @@ let Mask = cc.Class({
             default: false,
             type: cc.Boolean,
             tooltip: CC_DEV && 'i18n:COMPONENT.mask.inverted',
-            notify: function () {
+            notify () {
                 if (cc.game.renderType === cc.game.RENDER_TYPE_CANVAS) {
                     cc.warnID(4202);
                     return;
                 }
-            }
+            },
         },
 
         /**
@@ -212,10 +211,10 @@ let Mask = cc.Class({
          */
         _segments: 64,
         segements: {
-            get: function () {
+            get () {
                 return this._segments;
             },
-            set: function (value) {
+            set (value) {
                 this._segments = misc.clampf(value, SEGEMENTS_MIN, SEGEMENTS_MAX);
             },
             tooltip: CC_DEV && 'i18n:COMPONENT.mask.segements',
@@ -223,26 +222,26 @@ let Mask = cc.Class({
 
         _resizeToTarget: {
             animatable: false,
-            set: function (value) {
+            set (value) {
                 if (value) {
                     this._resizeNodeToTargetNode();
                 }
-            }
-        }
+            },
+        },
     },
 
     statics: {
         Type: MaskType,
     },
 
-    onLoad() {
+    onLoad () {
         this._graphics = new Graphics();
         this._graphics.node = this.node;
         this._graphics.lineWidth = 0;
         this._graphics.strokeColor = cc.color(0, 0, 0, 0);
     },
 
-    onRestore() {
+    onRestore () {
         if (!this._graphics) {
             this._graphics = new Graphics();
             this._graphics.node = this.node;
@@ -253,7 +252,7 @@ let Mask = cc.Class({
         }
     },
 
-    onEnable() {
+    onEnable () {
         this._super();
         if (this._type === MaskType.IMAGE_STENCIL) {
             if (!this._spriteFrame || !this._spriteFrame.textureLoaded()) {
@@ -264,8 +263,7 @@ let Mask = cc.Class({
                     this._spriteFrame.ensureLoadTexture();
                 }
             }
-        }
-        else {
+        } else {
             this._updateGraphics();
         }
 
@@ -279,7 +277,7 @@ let Mask = cc.Class({
         this._activateMaterial();
     },
 
-    onDisable() {
+    onDisable () {
         this._super();
 
         this.node.off(cc.Node.EventType.POSITION_CHANGED, this._updateGraphics, this);
@@ -291,19 +289,19 @@ let Mask = cc.Class({
         this.node._renderFlag &= ~RenderFlow.FLAG_POST_RENDER;
     },
 
-    onDestroy() {
+    onDestroy () {
         this._super();
         this._graphics.destroy();
     },
 
     _resizeNodeToTargetNode: CC_EDITOR && function () {
         if (this.spriteFrame) {
-            let rect = this.spriteFrame.getRect();
+            const rect = this.spriteFrame.getRect();
             this.node.setContentSize(rect.width, rect.height);
         }
     },
 
-    _onTextureLoaded() {
+    _onTextureLoaded () {
         // Mark render data dirty
         if (this._renderData) {
             this._renderData.uvDirty = true;
@@ -316,23 +314,22 @@ let Mask = cc.Class({
         }
     },
 
-    _applySpriteFrame(oldFrame) {
+    _applySpriteFrame (oldFrame) {
         if (oldFrame && oldFrame.off) {
             oldFrame.off('load', this._onTextureLoaded, this);
         }
-        let spriteFrame = this._spriteFrame;
+        const spriteFrame = this._spriteFrame;
         if (spriteFrame) {
             if (spriteFrame.textureLoaded()) {
                 this._onTextureLoaded(null);
-            }
-            else {
+            } else {
                 spriteFrame.once('load', this._onTextureLoaded, this);
                 spriteFrame.ensureLoadTexture();
             }
         }
     },
 
-    _activateMaterial() {
+    _activateMaterial () {
         // cannot be activated if texture not loaded yet
         if (this._type === MaskType.IMAGE_STENCIL && (!this.spriteFrame || !this.spriteFrame.textureLoaded())) {
             this.markForRender(false);
@@ -348,14 +345,13 @@ let Mask = cc.Class({
 
             // Reset material
             if (this._type === MaskType.IMAGE_STENCIL) {
-                let texture = this.spriteFrame.getTexture();
+                const texture = this.spriteFrame.getTexture();
                 this._material.useModel = false;
                 this._material.useTexture = true;
                 this._material.useColor = true;
                 this._material.texture = texture;
                 this._material.alphaThreshold = this.alphaThreshold;
-            }
-            else {
+            } else {
                 this._material.useModel = true;
                 this._material.useTexture = false;
                 this._material.useColor = false;
@@ -365,20 +361,19 @@ let Mask = cc.Class({
         this.markForRender(true);
     },
 
-    _updateGraphics() {
-        let node = this.node;
-        let graphics = this._graphics;
+    _updateGraphics () {
+        const node = this.node;
+        const graphics = this._graphics;
         // Share render data with graphics content
         graphics.clear(false);
-        let width = node._contentSize.width;
-        let height = node._contentSize.height;
-        let x = -width * node._anchorPoint.x;
-        let y = -height * node._anchorPoint.y;
+        const width = node._contentSize.width;
+        const height = node._contentSize.height;
+        const x = -width * node._anchorPoint.x;
+        const y = -height * node._anchorPoint.y;
         if (this._type === MaskType.RECT) {
             graphics.rect(x, y, width, height);
-        }
-        else if (this._type === MaskType.ELLIPSE) {
-            let cx = x + width / 2,
+        } else if (this._type === MaskType.ELLIPSE) {
+            const cx = x + width / 2,
                 cy = y + height / 2,
                 rx = width / 2,
                 ry = height / 2;
@@ -386,15 +381,14 @@ let Mask = cc.Class({
         }
         if (cc.game.renderType === cc.game.RENDER_TYPE_CANVAS) {
             graphics.stroke();
-        }
-        else {
+        } else {
             graphics.fill();
         }
     },
 
-    _hitTest(cameraPt) {
-        let node = this.node;
-        let size = node.getContentSize(),
+    _hitTest (cameraPt) {
+        const node = this.node;
+        const size = node.getContentSize(),
             w = size.width,
             h = size.height,
             testPt = _vec2_temp;
@@ -407,34 +401,31 @@ let Mask = cc.Class({
 
         if (this.type === MaskType.RECT || this.type === MaskType.IMAGE_STENCIL) {
             return testPt.x >= 0 && testPt.y >= 0 && testPt.x <= w && testPt.y <= h;
-        }
-        else if (this.type === MaskType.ELLIPSE) {
-            let rx = w / 2, ry = h / 2;
-            let px = testPt.x - 0.5 * w, py = testPt.y - 0.5 * h;
+        } else if (this.type === MaskType.ELLIPSE) {
+            const rx = w / 2, ry = h / 2;
+            const px = testPt.x - 0.5 * w, py = testPt.y - 0.5 * h;
             return px * px / (rx * rx) + py * py / (ry * ry) < 1;
         }
     },
 
-    markForUpdateRenderData(enable) {
+    markForUpdateRenderData (enable) {
         if (enable && this.enabledInHierarchy) {
             this.node._renderFlag |= RenderFlow.FLAG_UPDATE_RENDER_DATA;
-        }
-        else if (!enable) {
+        } else if (!enable) {
             this.node._renderFlag &= ~RenderFlow.FLAG_UPDATE_RENDER_DATA;
         }
     },
 
-    markForRender(enable) {
+    markForRender (enable) {
         if (enable && this.enabledInHierarchy) {
             this.node._renderFlag |= (RenderFlow.FLAG_RENDER | RenderFlow.FLAG_UPDATE_RENDER_DATA |
                 RenderFlow.FLAG_POST_RENDER);
-        }
-        else if (!enable) {
+        } else if (!enable) {
             this.node._renderFlag &= ~(RenderFlow.FLAG_RENDER | RenderFlow.FLAG_POST_RENDER);
         }
     },
 
-    disableRender() {
+    disableRender () {
         this.node._renderFlag &= ~(RenderFlow.FLAG_RENDER | RenderFlow.FLAG_UPDATE_RENDER_DATA |
             RenderFlow.FLAG_POST_RENDER);
     },

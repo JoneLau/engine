@@ -24,8 +24,8 @@
  THE SOFTWARE.
  ****************************************************************************/
 
-import { ValueType } from './value-type';
 import CCClass from '../data/class';
+import { ValueType } from './value-type';
 
 /**
  * !#en
@@ -43,76 +43,62 @@ import CCClass from '../data/class';
  * @class Size
  */
 export default class Size extends ValueType {
-    /**
-     * @method constructor
-     * @param {Number|Size} width
-     * @param {Number} [height]
-     */
-    constructor(width, height) {
+    public width: number;
+
+    public height: number;
+
+    constructor (size: Size);
+
+    constructor (width?: number, height?: number);
+
+    constructor (width?: Size | number, height?: number) {
         super();
         if (width && typeof width === 'object') {
-            height = width.height;
-            width = width.width;
+            this.height = width.height;
+            this.width = width.width;
+        } else {
+            this.width = width || 0;
+            this.height = height || 0;
         }
-        /**
-         * @property {Number} width
-         */
-        this.width = width || 0;
-        /**
-         * @property {Number} height
-         */
-        this.height = height || 0;
     }
 
     /**
      * !#en return a Size object with width = 0 and height = 0.
      * !#zh 返回一个宽度为 0 和高度为 0 的 Size 对象。
-     * @property ZERO
-     * @type {Size}
-     * @default new Size(0, 0)
-     * @static
      */
-    static get ZERO() {
+    static get ZERO () {
         return new Size(0.0, 0.0);
     }
 
     /**
      * !#en Clone a new size object from this one.
      * !#zh 克隆 size 对象。
-     * @method clone
-     * @return {Size}
      * @example
      * var a = new cc.size(10, 10);
      * a.clone();// return Size {width: 0, height: 0};
      */
-    clone() {
+    public clone () {
         return new Size(this.width, this.height);
     }
 
     /**
      * !#en TODO
      * !#zh 当前 Size 对象是否等于指定 Size 对象。
-     * @method equals
-     * @param {Size} other
-     * @return {Boolean}
      * @example
      * var a = new cc.size(10, 10);
      * a.equals(new cc.size(10, 10));// return true;
      */
-    equals(other) {
-        return other &&
-            this.width === other.width &&
+    public equals (other: Size) {
+        return this.width === other.width &&
             this.height === other.height;
     }
 
     /**
      * !#en TODO
      * !#zh 线性插值。
-     * @method lerp
-     * @param {Rect} to
-     * @param {Number} ratio - the interpolation coefficient.
-     * @param {Size} [out] - optional, the receiving vector.
-     * @return {Size}
+     * @param to
+     * @param ratio - the interpolation coefficient.
+     * @param out - optional, the receiving vector.
      * @example
      * var a = new cc.size(10, 10);
      * var b = new cc.rect(50, 50, 100, 100);
@@ -123,16 +109,16 @@ export default class Size extends ValueType {
      *    a.lerp(b, dt * 0.1, c);
      * }
      */
-    lerp(to, ratio, out) {
+    public lerp (to: Size, ratio: number, out?: Size) {
         out = out || new Size();
-        var width = this.width;
-        var height = this.height;
+        const width = this.width;
+        const height = this.height;
         out.width = width + (to.width - width) * ratio;
         out.height = height + (to.height - height) * ratio;
         return out;
     }
 
-    set(source) {
+    public set (source: Size) {
         this.width = source.width;
         this.height = source.height;
     }
@@ -140,22 +126,26 @@ export default class Size extends ValueType {
     /**
      * !#en TODO
      * !#zh 转换为方便阅读的字符串。
-     * @method toString
-     * @return {String}
      * @example
      * var a = new cc.size(10, 10);
      * a.toString();// return "(10.00, 10.00)";
      */
-    toString() {
-        return '(' + this.width.toFixed(2) + ', ' + this.height.toFixed(2) + ')';
+    public toString () {
+        return `(${this.width.toFixed(2)}, ${this.height.toFixed(2)})`;
     }
 }
 
 CCClass.fastDefine('cc.Size', Size, { width: 0, height: 0 });
 
-/**
- * @module cc
- */
+function size (size: Size): Size;
+
+function size (width?: number, height?: number): Size;
+
+function size (width: Size | number = 0, height: number = 0) {
+    return new Size(width as any, height);
+}
+
+export { size };
 
 /**
  * !#en
@@ -170,8 +160,6 @@ CCClass.fastDefine('cc.Size', Size, { width: 0, height: 0 });
  * @return {Size}
  * @example {@link utils/api/engine/docs/cocos2d/core/value-types/CCSize/size.js}
  */
-cc.size = function (w = 0, h = 0) {
-    return new Size(w, h);
-};
+cc.size = size;
 
 cc.Size = Size;
