@@ -1,7 +1,10 @@
 import { Node } from '../../../scene-graph/index'
-import Component from '../../../components/CCComponent';
+import Component from '../../../components/component';
 import { ccclass, property, executeInEditMode, menu, executionOrder } from '../../../core/data/class-decorator';
 import * as math from '../../../core/vmath/index';
+import Vec2 from '../../../core/value-types/vec2';
+import Size from '../../../core/value-types/size';
+import Event from '../../../core/platform/event-manager/CCEvent.js';
 
 let _vec2a = cc.v2();
 let _vec2b = cc.v2();
@@ -128,7 +131,7 @@ export default class UIRectComponent extends Component {
     * node.setContentSize(cc.size(100, 100));
     * node.setContentSize(100, 100);
     */
-    setContentSize(size, height) {
+    setContentSize(size: Size, height: number) {
         var locContentSize = this._contentSize;
         // var clone;
         if (height === undefined) {
@@ -178,7 +181,7 @@ export default class UIRectComponent extends Component {
      * node.setAnchorPoint(cc.v2(1, 1));
      * node.setAnchorPoint(1, 1);
      */
-    setAnchorPoint(point, y) {
+    setAnchorPoint(point: Vec2, y: number) {
         var locAnchorPoint = this._anchorPoint;
         if (y === undefined) {
             if ((point.x === locAnchorPoint.x) && (point.y === locAnchorPoint.y))
@@ -197,13 +200,13 @@ export default class UIRectComponent extends Component {
         // }
     }
 
-    isHit(point, listener) {
+    isHit(point: Vec2, listener: Event) {
         let w = this._contentSize.width,
             h = this._contentSize.height,
             cameraPt = _vec2a,
             testPt = _vec2b;
 
-        let renderComp = this.getComponent(cc.RenderComponent);
+        let renderComp = this.node.getComponent(cc.RenderComponent);
         if (!renderComp) {
             return false;
         }

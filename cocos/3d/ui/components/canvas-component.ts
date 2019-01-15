@@ -24,7 +24,7 @@
  THE SOFTWARE.
  ****************************************************************************/
 
-import Component from '../../../components/CCComponent';
+import Component from '../../../components/component';
 import { ccclass, property, executeInEditMode, menu, executionOrder } from '../../../core/data/class-decorator';
 import renderer from '../../../renderer/index';
 import { RenderQueue } from '../../../renderer/core/constants';

@@ -24,7 +24,7 @@
  THE SOFTWARE.
  ****************************************************************************/
 
-import Component from '../../../components/CCComponent';
+import Component from '../../../components/component';
 import { clamp01 } from '../../../core/utils/misc';
 import { ccclass, menu, executionOrder, executeInEditMode, property } from '../../../core/data/class-decorator';
 import SpriteComponent from './sprite-component';

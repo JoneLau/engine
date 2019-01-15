@@ -25,7 +25,7 @@
  ****************************************************************************/
 
 import { ccclass, menu, executionOrder, executeInEditMode, property } from '../../../../core/data/class-decorator';
-import Component from '../../../../components/CCComponent';
+import Component from '../../../../components/component';
 import Color from '../../../../core/value-types/color';
 import macro from '../../../../core/platform/CCMacro';
 import EditBoxImpl from './edit-box-impl';

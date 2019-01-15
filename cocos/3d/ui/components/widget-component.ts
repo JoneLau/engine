@@ -26,7 +26,7 @@
 
 // var WidgetManager = require('../base-ui/CCWidgetManager');
 import WidgetManager from '../../../2d/base-ui/CCWidgetManager';
-import Component from '../../../components/CCComponent';
+import Component from '../../../components/component';
 import { ccclass, property, executeInEditMode, menu, executionOrder } from '../../../core/data/class-decorator';
 import { Node } from '../../../scene-graph/index'
 /**
