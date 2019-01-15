@@ -25,12 +25,12 @@
  THE SOFTWARE.
  ****************************************************************************/
 
-import {ccclass, property} from '../core/data/class-decorator';
+import { ccclass, property } from '../core/data/class-decorator';
 import EventTarget from '../core/event/event-target';
-import {addon} from '../core/utils/js';
+import { addon } from '../core/utils/js';
 import Rect, { rect } from '../core/value-types/rect';
 import Size, { size } from '../core/value-types/size';
-import Vec2 from '../core/value-types/vec2';
+import Vec2, { v2 } from '../core/value-types/vec2';
 import { Asset } from './asset';
 import Texture2D from './texture-2d';
 import textureUtil from './texture-util';
@@ -117,10 +117,10 @@ export default class SpriteFrame extends Texture2D {
      * @type {Number}
      * @default 0
      */
-    get insetTop () {
+    get insetTop() {
         return this._capInsets[INSET_TOP];
     }
-    set insetTop (value) {
+    set insetTop(value) {
         this._capInsets[INSET_TOP] = value;
         // if (this._texture) {
         this._calculateSlicedUV();
@@ -134,10 +134,10 @@ export default class SpriteFrame extends Texture2D {
      * @type {Number}
      * @default 0
      */
-    get insetBottom () {
+    get insetBottom() {
         return this._capInsets[INSET_BOTTOM];
     }
-    set insetBottom (value) {
+    set insetBottom(value) {
         this._capInsets[INSET_BOTTOM] = value;
         // if (this._texture) {
         this._calculateSlicedUV();
@@ -151,10 +151,10 @@ export default class SpriteFrame extends Texture2D {
      * @type {Number}
      * @default 0
      */
-    get insetLeft () {
+    get insetLeft() {
         return this._capInsets[INSET_LEFT];
     }
-    set insetLeft (value) {
+    set insetLeft(value) {
         this._capInsets[INSET_LEFT] = value;
         // if (this._texture) {
         this._calculateSlicedUV();
@@ -168,10 +168,10 @@ export default class SpriteFrame extends Texture2D {
      * @type {Number}
      * @default 0
      */
-    get insetRight () {
+    get insetRight() {
         return this._capInsets[INSET_RIGHT];
     }
-    set insetRight (value) {
+    set insetRight(value) {
         this._capInsets[INSET_RIGHT] = value;
         // if (this._texture) {
         this._calculateSlicedUV();
@@ -188,7 +188,7 @@ export default class SpriteFrame extends Texture2D {
     private _rect = new Rect();
 
     // for trimming
-    private _offset = null;
+    private _offset = new Vec2();
 
     // for trimming
     private _originalSize = new Size();
@@ -214,7 +214,7 @@ export default class SpriteFrame extends Texture2D {
      * @param {Vec2} [offset] - The offset of the frame in the texture
      * @param {Size} [originalSize] - The size of the frame in the texture
      */
-    constructor () {
+    constructor() {
         super();
         // Init EventTarget data
         EventTarget.call(this);
@@ -248,7 +248,7 @@ export default class SpriteFrame extends Texture2D {
      * !#en Returns whether the texture have been loaded
      * !#zh 返回是否已加载纹理
      */
-    public textureLoaded () {
+    public textureLoaded() {
         return this.loaded;
     }
 
@@ -256,7 +256,7 @@ export default class SpriteFrame extends Texture2D {
      * !#en Returns whether the sprite frame is rotated in the texture.
      * !#zh 获取 SpriteFrame 是否旋转
      */
-    public isRotated () {
+    public isRotated() {
         return this._rotated;
     }
 
@@ -265,7 +265,7 @@ export default class SpriteFrame extends Texture2D {
      * !#zh 设置 SpriteFrame 是否旋转
      * @param value
      */
-    public setRotated (rotated: boolean) {
+    public setRotated(rotated: boolean) {
         this._rotated = rotated;
     }
 
@@ -273,7 +273,7 @@ export default class SpriteFrame extends Texture2D {
      * !#en Returns the rect of the sprite frame in the texture.
      * !#zh 获取 SpriteFrame 的纹理矩形区域
      */
-    public getRect () {
+    public getRect() {
         return rect(this._rect);
     }
 
@@ -281,7 +281,7 @@ export default class SpriteFrame extends Texture2D {
      * !#en Sets the rect of the sprite frame in the texture.
      * !#zh 设置 SpriteFrame 的纹理矩形区域
      */
-    public setRect (rect: Rect) {
+    public setRect(rect: Rect) {
         this._rect = rect;
     }
 
@@ -289,7 +289,7 @@ export default class SpriteFrame extends Texture2D {
      * !#en Returns the original size of the trimmed image.
      * !#zh 获取修剪前的原始大小
      */
-    public getOriginalSize () {
+    public getOriginalSize() {
         return size(this._originalSize);
     }
 
@@ -297,7 +297,7 @@ export default class SpriteFrame extends Texture2D {
      * !#en Sets the original size of the trimmed image.
      * !#zh 设置修剪前的原始大小
      */
-    public setOriginalSize (size: Size) {
+    public setOriginalSize(size: Size) {
         this._originalSize.set(size);
     }
 
@@ -311,7 +311,7 @@ export default class SpriteFrame extends Texture2D {
     //     return this._texture;
     // }
 
-    public _textureLoadedCallback () {
+    public _textureLoadedCallback() {
         const self = this;
         // let texture = this._texture;
         // if (!texture) {
@@ -350,6 +350,7 @@ export default class SpriteFrame extends Texture2D {
         self._calculateUV();
 
         // dispatch 'load' event of cc.SpriteFrame
+        // @ts-ignore
         self.emit('load');
     }
 
@@ -373,20 +374,17 @@ export default class SpriteFrame extends Texture2D {
     /**
      * !#en Returns the offset of the frame in the texture.
      * !#zh 获取偏移量
-     * @method getOffset
-     * @return {Vec2}
      */
-    public getOffset () {
-        return cc.v2(this._offset);
+    public getOffset() {
+        return v2(this._offset);
     }
 
     /**
      * !#en Sets the offset of the frame in the texture.
      * !#zh 设置偏移量
-     * @method setOffset
-     * @param {Vec2} offsets
+     * @param offsets
      */
-    public setOffset (offsets) {
+    public setOffset(offsets: Vec2) {
         this._offset = cc.v2(offsets);
     }
 
@@ -480,12 +478,12 @@ export default class SpriteFrame extends Texture2D {
      *     spriteFrame.ensureLoadTexture();
      * }
      */
-    public ensureLoadTexture () {
+    public ensureLoadTexture() {
         // if (this._texture) {
         // if (!this._texture.loaded) {
         if (!this.loaded) {
             // load exists texture
-            this._refreshTexture(/*this._texture*/);
+            // this._refreshTexture(/*this._texture*/);
             textureUtil.postLoadTexture(/*this._texture*/this);
         }
         // }
@@ -512,7 +510,7 @@ export default class SpriteFrame extends Texture2D {
     //     this._texture = null;   // TODO - release texture
     // }
 
-    public _checkRect (/*texture*/) {
+    public _checkRect(/*texture*/) {
         const rect = this._rect;
         let maxX = rect.x;
         let maxY = rect.y;
@@ -537,7 +535,7 @@ export default class SpriteFrame extends Texture2D {
         }
     }
 
-    public _calculateSlicedUV () {
+    public _calculateSlicedUV() {
         const rect = this._rect;
         // let atlasWidth = this._texture.width;
         // let atlasHeight = this._texture.height;
@@ -595,7 +593,7 @@ export default class SpriteFrame extends Texture2D {
         }
     }
 
-    public _calculateUV () {
+    public _calculateUV() {
         const rect = this._rect;
         // texture = this._texture,
         const uv = this.uv;
@@ -647,7 +645,9 @@ export default class SpriteFrame extends Texture2D {
 
     // SERIALIZATION
 
-    public _serialize (exporting) {
+    //@ts-ignore
+    // TODO:
+    public _serialize(exporting) {
         const rect = this._rect;
         const offset = this._offset;
         const size = this._originalSize;
@@ -663,6 +663,8 @@ export default class SpriteFrame extends Texture2D {
         //     }
         // }
         if (uuid && exporting) {
+            //@ts-ignore
+            // TODO:
             uuid = Editor.Utils.UuidUtils.compressUuid(uuid, true);
         }
 
@@ -691,7 +693,7 @@ export default class SpriteFrame extends Texture2D {
         };
     }
 
-    public _deserialize (data, handle) {
+    public _deserialize(data, handle) {
         super._deserialize(data.base, handle);
         const rect = data.rect;
         if (rect) {
@@ -732,7 +734,7 @@ export default class SpriteFrame extends Texture2D {
         // }
     }
 
-    public onLoaded () {
+    public onLoaded() {
         this.loaded = true;
         if (super.onLoaded) {
             super.onLoaded();
@@ -741,12 +743,12 @@ export default class SpriteFrame extends Texture2D {
         this._textureLoadedCallback();
     }
 
-    public copyWithZone (...args: any[]) {
-        return this.clone(...args);
+    public copyWithZone(...args: any[]) {
+        // return this.clone(...args);
     }
 
-    public copy (...args: any[]) {
-        return this.clone(...args);
+    public copy(...args: any[]) {
+        // return this.clone(...args);
     }
 
     // public initWithTexture (...args: any[]) {
