@@ -34,38 +34,41 @@
  * @class ToggleContainer
  * @extends Component
  */
-var ToggleContainer = cc.Class({
-    name: 'cc.ToggleContainer',
-    extends: cc.Component,
-    editor: CC_EDITOR && {
-        menu: 'i18n:MAIN_MENU.component.ui/ToggleContainer',
-        help: 'i18n:COMPONENT.help_url.toggleContainer',
-        executeInEditMode: true
-    },
 
-    properties: {
-        /**
-         * !#en If this setting is true, a toggle could be switched off and on when pressed.
-         * If it is false, it will make sure there is always only one toggle could be switched on
-         * and the already switched on toggle can't be switched off.
-         * !#zh 如果这个设置为 true， 那么 toggle 按钮在被点击的时候可以反复地被选中和未选中。
-         * @property {Boolean} allowSwitchOff
-         */
-        allowSwitchOff: {
-            tooltip: CC_DEV && 'i18n:COMPONENT.toggle_group.allowSwitchOff',
-            default: false
-        },
-    },
+import { Component } from '../../../components/component';
+import { ccclass, executeInEditMode, menu, property } from '../../../core/data/class-decorator';
 
-    updateToggles: function (toggle) {
+@ccclass('cc.ToggleContainerComponent')
+export default class ToggleContainerComponent extends Component {
+    @property
+    protected _allowSwitchOff = false;
+    @property
+    public toggleItems: Component[] = [];
+    /**
+     * !#en If this setting is true, a toggle could be switched off and on when pressed.
+     * If it is false, it will make sure there is always only one toggle could be switched on
+     * and the already switched on toggle can't be switched off.
+     * !#zh 如果这个设置为 true， 那么 toggle 按钮在被点击的时候可以反复地被选中和未选中。
+     * @property {Boolean} allowSwitchOff
+     */
+    @property
+    get allowSwitchOff() {
+        return this._allowSwitchOff;
+    }
+
+    set allowSwitchOff(value) {
+        this._allowSwitchOff = value;
+    }
+
+    updateToggles(toggle) {
         this.toggleItems.forEach(function (item) {
             if (toggle.isChecked && item !== toggle) {
                 item.isChecked = false;
             }
         });
-    },
+    }
 
-    _allowOnlyOneToggleChecked: function () {
+    _allowOnlyOneToggleChecked() {
         var isChecked = false;
         this.toggleItems.forEach(function (item) {
             if (isChecked) {
@@ -77,9 +80,9 @@ var ToggleContainer = cc.Class({
         });
 
         return isChecked;
-    },
+    }
 
-    _makeAtLeastOneToggleChecked: function () {
+    _makeAtLeastOneToggleChecked() {
         var isChecked = this._allowOnlyOneToggleChecked();
 
         if (!isChecked && !this.allowSwitchOff) {
@@ -88,33 +91,20 @@ var ToggleContainer = cc.Class({
                 toggleItems[0].check();
             }
         }
-    },
+    }
 
-    onEnable: function () {
+    onEnable() {
+        this.toggleItems = this.node.getComponentsInChildren(cc.ToggleComponent);
         this.node.on('child-added', this._allowOnlyOneToggleChecked, this);
         this.node.on('child-removed', this._makeAtLeastOneToggleChecked, this);
-    },
+    }
 
-    onDisable: function () {
+    onDisable() {
         this.node.off('child-added', this._allowOnlyOneToggleChecked, this);
         this.node.off('child-removed', this._makeAtLeastOneToggleChecked, this);
-    },
+    }
 
-    start: function () {
+    start() {
         this._makeAtLeastOneToggleChecked();
     }
-});
-
-/**
- * !#en Read only property, return the toggle items array reference managed by ToggleContainer.
- * !#zh 只读属性，返回 ToggleContainer 管理的 toggle 数组引用
- * @property {Toggle[]} toggleItems
- */
-var js = require('../platform/js');
-js.get(ToggleContainer.prototype, 'toggleItems',
-    function () {
-        return this.node.getComponentsInChildren(cc.Toggle);
-    }
-);
-
-cc.ToggleContainer = module.exports = ToggleContainer;
+}

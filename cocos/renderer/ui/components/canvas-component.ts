@@ -24,11 +24,13 @@
  THE SOFTWARE.
  ****************************************************************************/
 
+import {CameraComponent} from '../../../3d/framework/camera-component';
 import Component from '../../../components/component';
-import { ccclass, property, executeInEditMode, menu, executionOrder } from '../../../core/data/class-decorator';
-import renderer from '../../../renderer/index';
+import { ccclass, executeInEditMode, executionOrder, menu, property } from '../../../core/data/class-decorator';
+import Rect from '../../../core/value-types/rect';
+import Size from '../../../core/value-types/size';
+import { GFXClearFlag} from '../../../gfx/define';
 import { RenderQueue } from '../../../renderer/core/constants';
-import { Size } from '../../../core/value-types';
 
 /**
  * !#zh: 作为 UI 根节点，为所有子节点提供视窗四边的位置信息以供对齐，另外提供屏幕适配策略接口，方便从编辑器设置。
@@ -43,31 +45,14 @@ import { Size } from '../../../core/value-types';
 @executeInEditMode
 // @disallowMultiple
 export default class CanvasComponent extends Component {
-    /**
-     * !#en The desigin resolution for current scene.
-     * !#zh 当前场景设计分辨率。
-     * @property {Size} designResolution
-     * @default new cc.Size(960, 640)
-     */
-    @property
-    _designResolution: Size = cc.size(960, 640);
-    @property
-    _fitWidth: boolean = false;
-    @property
-    _fitHeight: boolean = true;
-    @property
-    _priority = 0;
-
-    _thisOnResized: Function | null = null;
-    _view: renderer.View | null = null;
 
     @property({
-        type: Size
+        type: Size,
     })
-    get designResolution() {
+    get designResolution () {
         return cc.size(this._designResolution);
     }
-    set designResolution(value: Size) {
+    set designResolution (value: Size) {
         this._designResolution.width = value.width;
         this._designResolution.height = value.height;
         this.applySettings();
@@ -81,10 +66,10 @@ export default class CanvasComponent extends Component {
      * @default false
      */
     @property()
-    get fitHeight() {
+    get fitHeight () {
         return this._fitHeight;
     }
-    set fitHeight(value: boolean) {
+    set fitHeight (value: boolean) {
         if (this._fitHeight !== value) {
             this._fitHeight = value;
             this.applySettings();
@@ -99,10 +84,10 @@ export default class CanvasComponent extends Component {
      * @default false
      */
     @property()
-    get fitWidth() {
+    get fitWidth () {
         return this._fitWidth;
     }
-    set fitWidth(value: boolean) {
+    set fitWidth (value: boolean) {
         if (this._fitWidth !== value) {
             this._fitWidth = value;
             this.applySettings();
@@ -112,30 +97,48 @@ export default class CanvasComponent extends Component {
 
     /**
      * !#en priority in render
-      * !#zh 显示优先级
-      * @property {Number} priority
-      */
+     * !#zh 显示优先级
+     */
     @property
-    get priority() {
+    get priority () {
         return this._priority;
     }
 
-    set priority(value: number) {
+    set priority (value: number) {
         this._priority = value;
     }
 
-    static views = [];
+    public static views = [];
 
-    static findView(comp: Component) {
-        for (var i = 0; i < CanvasComponent.views.length; i++) {
-            var element = CanvasComponent.views[i];
-            if (element.id === comp._viewID) {
-                return element.comp;
-            }
-        }
+    // public static findView (comp: Component) {
+    //     for (let i = 0; i < CanvasComponent.views.length; i++) {
+    //         const element = CanvasComponent.views[i];
+    //         if (element.id === comp._viewID) {
+    //             return element.comp;
+    //         }
+    //     }
 
-        return null;
-    }
+    //     return null;
+    // }
+
+    public _camere = null;
+    public _cameraInfo: object|null = null;
+    /**
+     * !#en The desigin resolution for current scene.
+     * !#zh 当前场景设计分辨率。
+     * @property {Size} designResolution
+     * @default new cc.Size(960, 640)
+     */
+    @property
+    public _designResolution = cc.size(960, 640);
+    @property
+    public _fitWidth = false;
+    @property
+    public _fitHeight = true;
+    @property
+    public _priority = 0;
+
+    public _thisOnResized: Function | null = null;
 
     // /**
     // * !#en Current active canvas, the scene should only have one active canvas at the same time.
@@ -145,27 +148,29 @@ export default class CanvasComponent extends Component {
     // */
     // static instance = null;
 
-    constructor() {
+    constructor () {
         super();
         this._thisOnResized = this.alignWithScreen.bind(this);
-        this._view = new renderer.View();
+        this._cameraInfo = {
+            name: 'ui',
+            clearFlags: GFXClearFlag.DEPTH | GFXClearFlag.STENCIL,
+            node: this.node,
+            stencil: 0,
+            projection: CameraComponent.ProjectionType.ORTHO,
+            orthoHeight: 10,
+            far: 4096,
+            near: 0.1,
+            rect: new Rect(0, 0, 1, 1),
+        };
     }
 
-    onLoad() {
-        this._view._clearFlags = renderer.CLEAR_DEPTH | renderer.CLEAR_STENCIL;
-        this._view._cullingByID = true;
-        this._view._stages = [RenderQueue.TRANSPARENT];
-        this._view._stencil = 0;
-        this._view._priority = this._priority;
-        this._view._color = cc.vmath.color4.create(0.2, 0.5, 0.5, 1);
-        cc.director._uiSystem.addScreen(this);
-    }
+    // public onLoad () {}
 
-    resetInEditor() {
+    public resetInEditor () {
         // _Scene._applyCanvasPreferences(this);
     }
 
-    __preload() {
+    public __preload () {
         // if (CC_DEV) {
         //     var Flags = cc.Object.Flags;
         //     this._objFlags |= (Flags.IsPositionLocked | Flags.IsAnchorLocked | Flags.IsSizeLocked);
@@ -194,26 +199,22 @@ export default class CanvasComponent extends Component {
 
         this.applySettings();
         this.alignWithScreen();
-
-        // Camera could be removed in canvas render mode
-        // let cameraNode = cc.find('Main Camera', this.node);
-        // if (!cameraNode) {
-        //     cameraNode = new cc.Node('Main Camera');
-        //     cameraNode.parent = this.node;
-        //     cameraNode.setSiblingIndex(0);
-        // }
-        // let camera = cameraNode.getComponent(Camera);
-        // if (!camera) {
-        //     camera = cameraNode.addComponent(Camera);
-
-        //     let ClearFlags = Camera.ClearFlags;
-        //     camera.clearFlags = ClearFlags.COLOR | ClearFlags.DEPTH | ClearFlags.STENCIL;
-        //     camera.depth = -1;
-        // }
-        // Camera.main = camera;
     }
 
-    onDestroy() {
+    public onEnable () {
+        this._camere = this._getRenderScene().createCamera(this._cameraInfo);
+    }
+
+    public onDisable () {
+        if (this._camere) {
+            this._getRenderScene().destroyCamera(this._cameraInfo);
+        }
+    }
+
+    public onDestroy () {
+        if (super.onDestroy) {
+            super.onDestroy();
+        }
         // if (CC_EDITOR) {
         //     cc.engine.off('design-resolution-changed', this._thisOnResized);
         // }
@@ -228,7 +229,7 @@ export default class CanvasComponent extends Component {
 
         cc.view.off('design-resolution-changed', this._thisOnResized);
 
-        cc.director._uiSystem.removeScreen(this);
+        // cc.director._uiSystem.removeScreen(this);
 
         // if (CanvasComponent.instance === this) {
         //     CanvasComponent.instance = null;
@@ -237,18 +238,25 @@ export default class CanvasComponent extends Component {
 
     //
 
-    alignWithScreen() {
-        var designSize, nodeSize;
+    public alignWithScreen () {
+        if (this._camere) {
+            this._camere.resize(cc.game.canvas.width, cc.game.canvas.height);
+            this._camere.orthoHeight = cc.game.canvas.height / cc.view._scaleY / 2;
+            this._camere.rect.x = this._camere.rect.y = 0;
+            this._camere.rect.width = cc.game.canvas.width;
+            this._camere.rect.height = cc.game.canvas.height;
+        }
         // if (CC_EDITOR) {
         //     nodeSize = designSize = cc.engine.getDesignResolutionSize();
         //     this.node.setPosition(designSize.width * 0.5, designSize.height * 0.5, 1);
         // }
         // else {
-        var canvasSize = nodeSize = cc.visibleRect;
-        designSize = cc.view.getDesignResolutionSize();
-        var clipTopRight = !this.fitHeight && !this.fitWidth;
-        var offsetX = 0;
-        var offsetY = 0;
+        const canvasSize = cc.visibleRect;
+        const nodeSize = canvasSize;
+        const designSize = cc.view.getDesignResolutionSize();
+        const clipTopRight = !this.fitHeight && !this.fitWidth;
+        let offsetX = 0;
+        let offsetY = 0;
         if (clipTopRight) {
             // offset the canvas to make it in the center of screen
             offsetX = (designSize.width - canvasSize.width) * 0.5;
@@ -262,24 +270,21 @@ export default class CanvasComponent extends Component {
         this.node.height = nodeSize.height;
     }
 
-    applySettings() {
-        var ResolutionPolicy = cc.ResolutionPolicy;
-        var policy;
+    public applySettings () {
+        const ResolutionPolicy = cc.ResolutionPolicy;
+        let policy;
 
         if (this.fitHeight && this.fitWidth) {
             policy = ResolutionPolicy.SHOW_ALL;
-        }
-        else if (!this.fitHeight && !this.fitWidth) {
+        } else if (!this.fitHeight && !this.fitWidth) {
             policy = ResolutionPolicy.NO_BORDER;
-        }
-        else if (this.fitWidth) {
+        } else if (this.fitWidth) {
             policy = ResolutionPolicy.FIXED_WIDTH;
-        }
-        else {      // fitHeight
+        } else {      // fitHeight
             policy = ResolutionPolicy.FIXED_HEIGHT;
         }
 
-        var designRes = this._designResolution;
+        const designRes = this._designResolution;
         // if (CC_EDITOR) {
         //     cc.engine.setDesignResolutionSize(designRes.width, designRes.height);
         // }
@@ -288,5 +293,3 @@ export default class CanvasComponent extends Component {
         // }
     }
 }
-
-// cc.Canvas = Canvas;

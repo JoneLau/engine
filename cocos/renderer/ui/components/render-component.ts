@@ -23,13 +23,19 @@
  THE SOFTWARE.
  ****************************************************************************/
 
-import RenderableComponent from '../../framework/renderable-component';
-import BlendFactor from '../../../core/platform/CCMacro';
-import RenderData from '../render-data/renderData';
+import RenderableComponent from '../../../3d/framework/renderable-component';
 // import gfx from '../../renderer/gfx/index';
-import { ccclass, property, menu, executionOrder, executeInEditMode } from '../../../core/data/class-decorator';
-import { Color } from '../../../core/value-types/index';
+import {
+    ccclass,
+    executeInEditMode,
+    executionOrder,
+    property,
+    requireComponent,
+} from '../../../core/data/class-decorator';
 import macro from '../../../core/platform/CCMacro';
+import { Color } from '../../../core/value-types/index';
+import RenderData from '../render-data/renderData';
+import UIRectComponent from './ui-rect-component';
 
 /**
  * !#en
@@ -41,34 +47,24 @@ import macro from '../../../core/platform/CCMacro';
  * @extends Component
  */
 @ccclass('cc.RenderComponent')
+@requireComponent(UIRectComponent)
 export default class RenderComponent extends RenderableComponent {
-    _srcBlendFactor: number = macro.BlendFactor.SRC_ALPHA;
-    _dstBlendFactor: number = macro.BlendFactor.ONE_MINUS_SRC_ALPHA;
-    @property
-    _color: Color = Color.WHITE;
-    _renderData: RenderData | null = null;
-    // _allocedDatas = [];
-    // _vertexFormat = null;
-    // _toPostHandle = false;
-    _renderDataPoolID: number = -1;
-    _viewID: number = -1;
 
     /**
-   * !#en specify the source Blend Factor, this will generate a custom material object, please pay attention to the memory cost.
-   * !#zh 指定原图的混合模式，这会克隆一个新的材质对象，注意这带来的
-   * @property srcBlendFactor
-   * @type {macro.BlendFactor}
-   * @example
-   * sprite.srcBlendFactor = cc.macro.BlendFactor.ONE;
-   */
+     * !#en specify the source Blend Factor, this will generate a custom material object
+     * please pay attention to the memory cost.
+     * !#zh 指定原图的混合模式，这会克隆一个新的材质对象，注意这带来的
+     * @property srcBlendFactor
+     * sprite.srcBlendFactor = macro.BlendFactor.ONE;
+     */
     @property({
-        type: macro.BlendFactor
+        type: macro.BlendFactor,
     })
-    get srcBlendFactor() {
+    get srcBlendFactor () {
         return this._srcBlendFactor;
     }
-    set srcBlendFactor(value) {
-        if (this._srcBlendFactor === value) return;
+    set srcBlendFactor (value) {
+        if (this._srcBlendFactor === value) { return; }
         this._srcBlendFactor = value;
         this._updateBlendFunc(true);
     }
@@ -82,23 +78,23 @@ export default class RenderComponent extends RenderableComponent {
      * sprite.dstBlendFactor = cc.macro.BlendFactor.ONE;
      */
     @property({
-        type: macro.BlendFactor
+        type: macro.BlendFactor,
     })
-    get dstBlendFactor() {
+    get dstBlendFactor () {
         return this._dstBlendFactor;
     }
 
-    set dstBlendFactor(value) {
-        if (this._dstBlendFactor === value) return;
+    set dstBlendFactor (value) {
+        if (this._dstBlendFactor === value) { return; }
         this._dstBlendFactor = value;
         this._updateBlendFunc(true);
     }
 
-    get color() {
+    get color () {
         return this._color;
     }
 
-    set color(value) {
+    set color (value) {
         if (this._color === value) {
             return;
         }
@@ -106,13 +102,25 @@ export default class RenderComponent extends RenderableComponent {
         this._color = value;
     }
 
-    constructor() {
+    public static assembler = null;
+    public _srcBlendFactor: number = macro.BlendFactor.SRC_ALPHA;
+    public _dstBlendFactor: number = macro.BlendFactor.ONE_MINUS_SRC_ALPHA;
+    @property
+    public _color: Color = Color.WHITE;
+    public _renderData: RenderData | null = null;
+    // _allocedDatas = [];
+    // _vertexFormat = null;
+    // _toPostHandle = false;
+    public _renderDataPoolID: number = -1;
+    public _viewID: number = -1;
+
+    constructor () {
         super();
-        this._assembler = this.constructor._assembler;
+        // this._assembler = this.constructor._assembler;
         // this._postAssembler = this.constructor._postAssembler;
     }
 
-    onEnable() {
+    public onEnable () {
         // if (this.node._renderComponent) {
         //     this.node._renderComponent.enabled = false;
         // }
@@ -120,12 +128,12 @@ export default class RenderComponent extends RenderableComponent {
         // this.node._renderFlag |= RenderFlow.FLAG_RENDER | RenderFlow.FLAG_UPDATE_RENDER_DATA | RenderFlow.FLAG_COLOR;
     }
 
-    onDisable() {
+    public onDisable () {
         // this.node._renderComponent = null;
         // this.disableRender();
     }
 
-    onDestroy() {
+    public onDestroy () {
         // for (let i = 0, l = this._allocedDatas.length; i < l; i++) {
         //     RenderData.free(this._allocedDatas[i]);
         // }
@@ -170,15 +178,15 @@ export default class RenderComponent extends RenderableComponent {
     //     // this.node._renderFlag &= ~(RenderFlow.FLAG_RENDER | RenderFlow.FLAG_CUSTOM_IA_RENDER | RenderFlow.FLAG_UPDATE_RENDER_DATA | RenderFlow.FLAG_COLOR);
     // }
 
-    requestRenderData() {
-        let data = RenderData.add();
+    public requestRenderData () {
+        const data = RenderData.add();
         // this._allocedDatas.push(data);
         this._renderData = data.data;
         this._renderDataPoolID = data.pooID;
         return this._renderData;
     }
 
-    destroyRenderData() {
+    public destroyRenderData () {
         // let index = this._allocedDatas.indexOf(data);
         // if (index !== -1) {
         //     this._allocedDatas.splice(index, 1);
@@ -193,30 +201,16 @@ export default class RenderComponent extends RenderableComponent {
         this._renderData = null;
     }
 
-    _updateColor() {
-        let material = this.material;
+    public _updateColor () {
+        const material = this.material;
         if (material) {
-            // material.color = this.node.color;
             material.setProperty('color', this._color);
             // material.updateHash();
-
-            // reset flag when set color to material successfully
-            // this.node._renderFlag &= ~RenderFlow.FLAG_COLOR;
         }
     }
 
-    // getMaterial() {
-    //     return this.material;
-    // }
-
-    // _updateMaterial(material) {
-    //     this.material = material;
-
-    //     // this._updateBlendFunc();
-    //     // material.updateHash();
-    // }
-
-    _updateBlendFunc(updateHash) {
+    //TODO:
+    public _updateBlendFunc (updateHash) {
         // if (!this.material) {
         //     return;
         // }
@@ -235,6 +229,5 @@ export default class RenderComponent extends RenderableComponent {
     }
 }
 
-RenderComponent._assembler = null;
+// RenderComponent._assembler = null;
 // RenderComponent._postAssembler = null;
-

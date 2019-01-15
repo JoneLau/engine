@@ -23,16 +23,16 @@
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE.
  ****************************************************************************/
-//@ts-check
-import Component from '../../../components/component';
-import { lerp } from '../../../core/utils/misc';
-import { ccclass, menu, executionOrder, executeInEditMode, property } from '../../../core/data/class-decorator';
-import * as math from '../../../core/vmath/index';
-import { Vec3, Color } from '../../../core/value-types/index';
+// @ts-check
 import SpriteFrame from '../../../assets/CCSpriteFrame';
-import { Node } from '../../../scene-graph';
 import ComponentEventHandler from '../../../components/CCComponentEventHandler';
+import Component from '../../../components/component';
+import { ccclass, executeInEditMode, executionOrder, menu, property } from '../../../core/data/class-decorator';
 import Event from '../../../core/event/event';
+import { lerp } from '../../../core/utils/misc';
+import { Color, Vec3 } from '../../../core/value-types/index';
+import * as math from '../../../core/vmath/index';
+import { Node } from '../../../scene-graph';
 import SpriteComponent from './sprite-component';
 
 /**
@@ -40,7 +40,7 @@ import SpriteComponent from './sprite-component';
  * !#zh 过渡类型
  * @enum Button.Transition
  */
-let Transition = cc.Enum({
+const Transition = cc.Enum({
     /**
      * !#en The none type.
      * !#zh 不做任何过渡
@@ -66,7 +66,7 @@ let Transition = cc.Enum({
      * !#zh 缩放过渡
      * @property {Number} SCALE
      */
-    SCALE: 3
+    SCALE: 3,
 });
 
 /**
@@ -116,7 +116,6 @@ let Transition = cc.Enum({
  * button.node.on(cc.NodeUI.EventType.TOUCH_START, function (event) {
  *     cc.log("This is a callback after the trigger event");
  * });
-
  * // You could also add a click event
  * //Note: In this way, you can't get the touch event info, so use it wisely.
  * button.node.on('click', function (button) {
@@ -124,51 +123,12 @@ let Transition = cc.Enum({
  * })
  *
  */
+
 @ccclass('cc.ButtonComponent')
 @executionOrder(100)
 @menu('UI/Button')
 @executeInEditMode
 export default class ButtonComponent extends Component {
-    @property
-    _interactable: boolean = true;
-    @property
-    _transition: number = Transition.NONE;
-    @property
-    _normalColor: Color = cc.color(214, 214, 214);
-    @property
-    _hoverColor: Color = cc.color(211, 211, 211);
-    @property
-    _pressColor: Color = cc.Color.WHITE;
-    @property
-    _disabledColor: Color = cc.color(124, 124, 124);
-    @property
-    _normalSprite: SpriteFrame | null = null;
-    @property
-    _hoverSprite: SpriteFrame | null = null;
-    @property
-    _pressedSprite: SpriteFrame | null = null;
-    @property
-    _disabledSprite: SpriteFrame | null = null;
-    @property
-    _duration: number = 0.1;
-    @property
-    _zoomScale: number = 1.2;
-    @property
-    _target: Node = null;
-    @property
-    _clickEvents: ComponentEventHandler[] = [];
-
-    _pressed: boolean = false;
-    _hovered: boolean = false;
-    _fromColor: Color = cc.color();
-    _toColor: Color = cc.color();
-    _time: number = 0;
-    _transitionFinished: boolean = true;
-    _fromScale: Vec3 = cc.v3();
-    _toScale: Vec3 = cc.v3();
-    _originalScale: Vec3 = cc.v3();
-    _sprite: SpriteComponent | null = null;
-    _previousNormalSprite: SpriteFrame | null = null;
 
     /**
      * !#en
@@ -180,11 +140,11 @@ export default class ButtonComponent extends Component {
      * @default true
      */
     @property
-    get interactable() {
+    get interactable () {
         return this._interactable;
     }
 
-    set interactable(value: boolean) {
+    set interactable (value: boolean) {
         if (CC_EDITOR) {
             if (value) {
                 this._previousNormalSprite = this.normalSprite;
@@ -200,7 +160,7 @@ export default class ButtonComponent extends Component {
         }
     }
 
-    set _resizeToTarget(value: boolean) {
+    set _resizeToTarget (value: boolean) {
         if (value) {
             this._resizeNodeToTargetNode();
         }
@@ -226,13 +186,13 @@ export default class ButtonComponent extends Component {
      * @default Button.Transition.Node
      */
     @property({
-        type: Transition
+        type: Transition,
     })
-    get transition() {
+    get transition () {
         return this._transition;
     }
 
-    set transition(value: number) {
+    set transition (value: number) {
         if (this._transition === value) {
             return;
         }
@@ -248,19 +208,18 @@ export default class ButtonComponent extends Component {
      * @property {Color} normalColor
      */
     @property
-    get normalColor() {
+    get normalColor () {
         return this._normalColor;
     }
 
-    set normalColor(value: Color) {
+    set normalColor (value: Color) {
         if (this._normalColor === value) {
-            return
+            return;
         }
 
         this._normalColor = value;
         this._updateState();
     }
-
 
     /**
      * !#en Pressed state color
@@ -268,11 +227,11 @@ export default class ButtonComponent extends Component {
      * @property {Color} pressedColor
      */
     @property
-    get pressedColor() {
+    get pressedColor () {
         return this._pressColor;
     }
 
-    set pressedColor(value: Color) {
+    set pressedColor (value: Color) {
         if (this._pressColor === value) {
             return;
         }
@@ -286,11 +245,11 @@ export default class ButtonComponent extends Component {
      * @property {Color} hoverColor
      */
     @property
-    get hoverColor() {
+    get hoverColor () {
         return this._hoverColor;
     }
 
-    set hoverColor(value: Color) {
+    set hoverColor (value: Color) {
         if (this._hoverColor === value) {
             return;
         }
@@ -303,11 +262,11 @@ export default class ButtonComponent extends Component {
      * @property {Color} disabledColor
      */
     @property
-    get disabledColor() {
+    get disabledColor () {
         return this._disabledColor;
     }
 
-    set disabledColor(value: Color) {
+    set disabledColor (value: Color) {
         if (this._disabledColor === value) {
             return;
         }
@@ -316,7 +275,6 @@ export default class ButtonComponent extends Component {
         this._updateState();
     }
 
-
     /**
      * !#en Color and Scale transition duration
      * !#zh 颜色过渡和缩放过渡时所需时间
@@ -324,13 +282,13 @@ export default class ButtonComponent extends Component {
      */
     @property({
         min: 0,
-        max: 10
+        max: 10,
     })
-    get duration() {
+    get duration () {
         return this._duration;
     }
 
-    set duration(value: number) {
+    set duration (value: number) {
         if (this._duration === value) {
             return;
         }
@@ -345,11 +303,11 @@ export default class ButtonComponent extends Component {
      * @property {Number} zoomScale
      */
     @property
-    get zoomScale() {
+    get zoomScale () {
         return this._zoomScale;
     }
 
-    set zoomScale(value: number) {
+    set zoomScale (value: number) {
         if (this._zoomScale === value) {
             return;
         }
@@ -364,13 +322,13 @@ export default class ButtonComponent extends Component {
      * @property {SpriteFrame} normalSprite
      */
     @property({
-        type: SpriteFrame
+        type: SpriteFrame,
     })
-    get normalSprite() {
+    get normalSprite () {
         return this._normalSprite;
     }
 
-    set normalSprite(value: SpriteFrame) {
+    set normalSprite (value: SpriteFrame) {
         if (this._normalSprite === value) {
             return;
         }
@@ -385,13 +343,13 @@ export default class ButtonComponent extends Component {
      * @property {SpriteFrame} pressedSprite
      */
     @property({
-        type: SpriteFrame
+        type: SpriteFrame,
     })
-    get pressedSprite() {
+    get pressedSprite () {
         return this._pressedSprite;
     }
 
-    set pressedSprite(value: SpriteFrame) {
+    set pressedSprite (value: SpriteFrame) {
         if (this._pressedSprite === value) {
             return;
         }
@@ -406,13 +364,13 @@ export default class ButtonComponent extends Component {
      * @property {SpriteFrame} hoverSprite
      */
     @property({
-        type: SpriteFrame
+        type: SpriteFrame,
     })
-    get hoverSprite() {
+    get hoverSprite () {
         return this._hoverSprite;
     }
 
-    set hoverSprite(value: SpriteFrame) {
+    set hoverSprite (value: SpriteFrame) {
         if (this._hoverSprite === value) {
             return;
         }
@@ -424,16 +382,16 @@ export default class ButtonComponent extends Component {
     /**
      * !#en Disabled state sprite
      * !#zh 禁用状态下按钮所显示的 Sprite 。
-     * @property {SpriteFrame} disabledSprite
+     * @return {SpriteFrame}
      */
     @property({
-        type: SpriteFrame
+        type: SpriteFrame,
     })
-    get disabledSprite() {
+    get disabledSprite () {
         return this._disabledSprite;
     }
 
-    set disabledSprite(value: SpriteFrame) {
+    set disabledSprite (value: SpriteFrame) {
         if (this._disabledSprite === value) {
             return;
         }
@@ -458,11 +416,11 @@ export default class ButtonComponent extends Component {
      * @property {Node} target
      */
     @property
-    get target() {
+    get target () {
         return this._target;
     }
 
-    set target(value: Node) {
+    set target (value: Node) {
         if (this._target === value) {
             return;
         }
@@ -477,26 +435,66 @@ export default class ButtonComponent extends Component {
      * @property {ComponentEventHandler[]} clickEvents
      */
     @property({
-        type: ComponentEventHandler
+        type: ComponentEventHandler,
     })
-    get clickEvents() {
+    get clickEvents () {
         return this._clickEvents;
     }
 
-    set clickEvents(value: ComponentEventHandler[]) {
+    set clickEvents (value: ComponentEventHandler[]) {
         this._clickEvents = value;
     }
 
-    static Transition = Transition;
+    public static Transition = Transition;
+    @property
+    public _interactable: boolean = true;
+    @property
+    public _transition: number = Transition.NONE;
+    @property
+    public _normalColor: Color = cc.color(214, 214, 214);
+    @property
+    public _hoverColor: Color = cc.color(211, 211, 211);
+    @property
+    public _pressColor: Color = cc.Color.WHITE;
+    @property
+    public _disabledColor: Color = cc.color(124, 124, 124);
+    @property
+    public _normalSprite: SpriteFrame | null = null;
+    @property
+    public _hoverSprite: SpriteFrame | null = null;
+    @property
+    public _pressedSprite: SpriteFrame | null = null;
+    @property
+    public _disabledSprite = null;
+    @property
+    public _duration: number = 0.1;
+    @property
+    public _zoomScale: number = 1.2;
+    @property
+    public _target: Node = null;
+    @property
+    public _clickEvents: ComponentEventHandler[] = [];
 
-    constructor() {
+    public _pressed: boolean = false;
+    public _hovered: boolean = false;
+    public _fromColor: Color = cc.color();
+    public _toColor: Color = cc.color();
+    public _time: number = 0;
+    public _transitionFinished: boolean = true;
+    public _fromScale: Vec3 = cc.v3();
+    public _toScale: Vec3 = cc.v3();
+    public _originalScale: Vec3 = cc.v3();
+    public _sprite: SpriteComponent | null = null;
+    public _previousNormalSprite: SpriteFrame | null = null;
+
+    constructor () {
         super();
         if (CC_EDITOR) {
             this._previousNormalSprite = null;
         }
     }
 
-    __preload() {
+    public __preload () {
         if (!this.target) {
             this.target = this.node;
         }
@@ -504,13 +502,13 @@ export default class ButtonComponent extends Component {
         this._updateState();
     }
 
-    _resetState() {
+    public _resetState () {
         this._pressed = false;
         this._hovered = false;
         // // Restore button status
-        let target = this.target;
-        let renderComp = this.target.getComponent(cc.RenderComponent);
-        let transition = this.transition;
+        const target = this.target;
+        const renderComp = this.target.getComponent(cc.RenderComponent);
+        const transition = this.transition;
         if (transition === Transition.COLOR && this.interactable) {
             renderComp.color = this.normalColor;
         } else if (transition === Transition.SCALE) {
@@ -519,7 +517,7 @@ export default class ButtonComponent extends Component {
         this._transitionFinished = true;
     }
 
-    onEnable() {
+    public onEnable () {
         // check sprite frames
         if (this._normalSprite) {
             this._normalSprite.ensureLoadTexture();
@@ -545,7 +543,7 @@ export default class ButtonComponent extends Component {
         }
     }
 
-    onDisable() {
+    public onDisable () {
         this._resetState();
 
         if (!CC_EDITOR) {
@@ -561,8 +559,8 @@ export default class ButtonComponent extends Component {
         }
     }
 
-    update(dt) {
-        let target = this._target;
+    public update (dt) {
+        const target = this._target;
         if (this._transitionFinished) {
             return;
         }
@@ -582,7 +580,7 @@ export default class ButtonComponent extends Component {
             this._transitionFinished = true;
         }
 
-        let renderComp = target.getComponent(cc.RenderComponent);
+        const renderComp = target.getComponent(cc.RenderComponent);
         if (this._transition === Transition.COLOR) {
             renderComp.color = this._fromColor.lerp(this._toColor, ratio);
         } else if (this.transition === Transition.SCALE) {
@@ -592,7 +590,7 @@ export default class ButtonComponent extends Component {
         }
     }
 
-    _registerEvent() {
+    public _registerEvent () {
         this.node.on(cc.NodeUI.EventType.TOUCH_START, this._onTouchBegan, this);
         this.node.on(cc.NodeUI.EventType.TOUCH_MOVE, this._onTouchMove, this);
         this.node.on(cc.NodeUI.EventType.TOUCH_END, this._onTouchEnded, this);
@@ -602,7 +600,7 @@ export default class ButtonComponent extends Component {
         this.node.on(cc.NodeUI.EventType.MOUSE_LEAVE, this._onMouseMoveOut, this);
     }
 
-    _getTargetSprite(target: Node | null) {
+    public _getTargetSprite (target: Node | null) {
         let sprite = null;
         if (target) {
             sprite = target.getComponent(cc.SpriteComponent);
@@ -610,7 +608,7 @@ export default class ButtonComponent extends Component {
         return sprite;
     }
 
-    _applyTarget() {
+    public _applyTarget () {
         this._sprite = this._getTargetSprite(this._target);
         if (this._target) {
             math.vec3.copy(this._originalScale, this.target._lscale);
@@ -618,20 +616,20 @@ export default class ButtonComponent extends Component {
     }
 
     // touch event handler
-    _onTouchBegan(event: Event | null) {
-        if (!this._interactable || !this.enabledInHierarchy) return;
+    public _onTouchBegan (event: Event | null) {
+        if (!this._interactable || !this.enabledInHierarchy) { return; }
 
         this._pressed = true;
         this._updateState();
         event.stopPropagation();
     }
 
-    _onTouchMove(event: Event | null) {
-        if (!this._interactable || !this.enabledInHierarchy || !this._pressed) return;
+    public _onTouchMove (event: Event | null) {
+        if (!this._interactable || !this.enabledInHierarchy || !this._pressed) { return; }
         // mobile phone will not emit _onMouseMoveOut,
         // so we have to do hit test when touch moving
-        let touch = event.touch;
-        let hit = this.node._hitTest(touch.getLocation());
+        const touch = event.touch;
+        const hit = this.node._hitTest(touch.getLocation());
 
         if (this._transition === Transition.SCALE && this._target) {
             if (hit) {
@@ -656,8 +654,8 @@ export default class ButtonComponent extends Component {
         event.stopPropagation();
     }
 
-    _onTouchEnded(event: Event | null) {
-        if (!this._interactable || !this.enabledInHierarchy) return;
+    public _onTouchEnded (event: Event | null) {
+        if (!this._interactable || !this.enabledInHierarchy) { return; }
 
         if (this._pressed) {
             ComponentEventHandler.emitEvents(this._clickEvents, event);
@@ -668,16 +666,16 @@ export default class ButtonComponent extends Component {
         event.stopPropagation();
     }
 
-    _onTouchCancel() {
-        if (!this._interactable || !this.enabledInHierarchy) return;
+    public _onTouchCancel () {
+        if (!this._interactable || !this.enabledInHierarchy) { return; }
 
         this._pressed = false;
         this._updateState();
     }
 
-    _onMouseMoveIn() {
-        if (this._pressed || !this.interactable || !this.enabledInHierarchy) return;
-        if (this._transition === Transition.SPRITE && !this._hoverSprite) return;
+    public _onMouseMoveIn () {
+        if (this._pressed || !this.interactable || !this.enabledInHierarchy) { return; }
+        if (this._transition === Transition.SPRITE && !this._hoverSprite) { return; }
 
         if (!this._hovered) {
             this._hovered = true;
@@ -685,7 +683,7 @@ export default class ButtonComponent extends Component {
         }
     }
 
-    _onMouseMoveOut() {
+    public _onMouseMoveOut () {
         if (this._hovered) {
             this._hovered = false;
             this._updateState();
@@ -693,42 +691,38 @@ export default class ButtonComponent extends Component {
     }
 
     // state handler
-    _updateState() {
-        let state = this._getButtonState();
+    public _updateState () {
+        const state = this._getButtonState();
         this._applyTransition(state);
         // this._updateDisabledState();
     }
 
-    _getButtonState() {
+    public _getButtonState () {
         let state;
         if (!this._interactable) {
             state = 'disabled';
-        }
-        else if (this._pressed) {
+        } else if (this._pressed) {
             state = 'pressed';
-        }
-        else if (this._hovered) {
+        } else if (this._hovered) {
             state = 'hover';
-        }
-        else {
+        } else {
             state = 'normal';
         }
         return state;
     }
 
-    _updateColorTransition(state: string) {
-        let color = this[state + 'Color'];
-        let target = this._target;
+    public _updateColorTransition (state: string) {
+        const color = this[state + 'Color'];
+        const target = this._target;
 
-        let renderComp = target.getComponent(cc.RenderComponent);
+        const renderComp = target.getComponent(cc.RenderComponent);
         if (!renderComp) {
             return;
         }
 
         if (CC_EDITOR) {
             renderComp.color = color;
-        }
-        else {
+        } else {
             this._fromColor = renderComp.color.clone();
             this._toColor = color;
             this._time = 0;
@@ -736,14 +730,14 @@ export default class ButtonComponent extends Component {
         }
     }
 
-    _updateSpriteTransition(state: string) {
-        let sprite = this[state + 'Sprite'];
+    public _updateSpriteTransition (state: string) {
+        const sprite = this[state + 'Sprite'];
         if (this._sprite && sprite) {
             this._sprite.spriteFrame = sprite;
         }
     }
 
-    _updateScaleTransition(state: string) {
+    public _updateScaleTransition (state: string) {
         if (state === 'pressed') {
             this._zoomUp();
         } else {
@@ -751,22 +745,22 @@ export default class ButtonComponent extends Component {
         }
     }
 
-    _zoomUp() {
+    public _zoomUp () {
         math.vec3.copy(this._fromScale, this._originalScale);
         math.vec3.scale(this._toScale, this._originalScale, this._zoomScale);
         this._time = 0;
         this._transitionFinished = false;
     }
 
-    _zoomBack() {
+    public _zoomBack () {
         math.vec3.copy(this._fromScale, this.target._lscale);
         math.vec3.copy(this._toScale, this._originalScale);
         this._time = 0;
         this._transitionFinished = false;
     }
 
-    _applyTransition(state: string) {
-        let transition = this._transition;
+    public _applyTransition (state: string) {
+        const transition = this._transition;
         if (transition === Transition.COLOR) {
             this._updateColorTransition(state);
         } else if (transition === Transition.SPRITE) {
@@ -776,7 +770,7 @@ export default class ButtonComponent extends Component {
         }
     }
 
-    _resizeNodeToTargetNode() {
+    public _resizeNodeToTargetNode () {
         if (CC_EDITOR && this._target) {
             this.node.setContentSize(this.target.getContentSize());
         }
@@ -796,8 +790,6 @@ export default class ButtonComponent extends Component {
     //     }
     // }
 }
-
-
 
 /**
  * !#en

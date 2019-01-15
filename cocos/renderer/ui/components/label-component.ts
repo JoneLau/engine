@@ -32,7 +32,6 @@ import { ccclass, property, menu, executionOrder, executeInEditMode, requireComp
 import Font from '../../../assets/CCFont';
 import Texture2D from '../../../assets/texture-2d';
 import MeshBuffer from '../render-data/mesh-buffer';
-import UIRectComponent from './ui-rect-component';
 // import { value } from '../../../core/utils/js';
 
 /**
@@ -141,7 +140,6 @@ const Overflow = cc.Enum({
 @ccclass('cc.LabelComponent')
 @executionOrder(100)
 @menu('UI/Label')
-@requireComponent(UIRectComponent)
 @executeInEditMode
 export default class LabelComponent extends RenderComponent {
     @property

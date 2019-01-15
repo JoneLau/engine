@@ -1,16 +1,17 @@
 import { ccclass, mixins, property } from '../core/data/class-decorator';
-import { EventTarget } from '../core/event';
 import { Enum, Mat4, Quat, Vec3 } from '../core/value-types';
-import { mat4, quat, vec3 } from '../core/vmath';
-import { BaseNode } from './base-node';
-import { Layers } from './layers';
 import Size from '../core/value-types/size';
 import Vec2 from '../core/value-types/vec2';
+import { mat4, quat, vec3 } from '../core/vmath';
+import UIRectComponent from '../renderer/gui/components/ui-rect-component';
+import { BaseNode } from './base-node';
+import { Layers } from './layers';
+import { EventTarget } from '../core/event/event-target-base';
 
 const v3_a = new Vec3();
 const q_a = new Quat();
 const array_a = new Array(10);
-var _cachedArray = new Array(16);
+const _cachedArray = new Array(16);
 _cachedArray.length = 0;
 
 const EventType = Enum({
@@ -27,16 +28,16 @@ const EventType = Enum({
     MOUSE_MOVE: 'mouse-move',
     MOUSE_LEAVE: 'mouse-leave',
     MOUSE_UP: 'mouse-up',
-    MOUSE_WHEEL: 'mouse-wheel'
+    MOUSE_WHEEL: 'mouse-wheel',
 });
 
-var _touchEvents = [
+const _touchEvents = [
     EventType.TOUCH_START,
     EventType.TOUCH_MOVE,
     EventType.TOUCH_END,
     EventType.TOUCH_CANCEL,
 ];
-var _mouseEvents = [
+const _mouseEvents = [
     EventType.MOUSE_DOWN,
     EventType.MOUSE_ENTER,
     EventType.MOUSE_MOVE,
@@ -45,9 +46,9 @@ var _mouseEvents = [
     EventType.MOUSE_WHEEL,
 ];
 
-var _touchStartHandler = function (touch, event) {
-    var pos = touch.getLocation();
-    var node = this.owner;
+const _touchStartHandler = function (touch, event) {
+    const pos = touch.getLocation();
+    const node = this.owner;
 
     if (node._hitTest(pos, this)) {
         event.type = EventType.TOUCH_START;
@@ -58,29 +59,28 @@ var _touchStartHandler = function (touch, event) {
     }
     return false;
 };
-var _touchMoveHandler = function (touch, event) {
-    var node = this.owner;
+const _touchMoveHandler = function (touch, event) {
+    const node = this.owner;
     event.type = EventType.TOUCH_MOVE;
     event.touch = touch;
     event.bubbles = true;
     node.dispatchEvent(event);
 };
-var _touchEndHandler = function (touch, event) {
-    var pos = touch.getLocation();
-    var node = this.owner;
+const _touchEndHandler = function (touch, event) {
+    const pos = touch.getLocation();
+    const node = this.owner;
 
     if (node._hitTest(pos, this)) {
         event.type = EventType.TOUCH_END;
-    }
-    else {
+    } else {
         event.type = EventType.TOUCH_CANCEL;
     }
     event.touch = touch;
     event.bubbles = true;
     node.dispatchEvent(event);
 };
-var _touchCancelHandler = function (touch, event) {
-    var node = this.owner;
+const _touchCancelHandler = function (touch, event) {
+    const node = this.owner;
 
     event.type = EventType.TOUCH_CANCEL;
     event.touch = touch;
@@ -88,9 +88,9 @@ var _touchCancelHandler = function (touch, event) {
     node.dispatchEvent(event);
 };
 
-var _mouseDownHandler = function (event) {
-    var pos = event.getLocation();
-    var node = this.owner;
+const _mouseDownHandler = function (event) {
+    const pos = event.getLocation();
+    const node = this.owner;
 
     if (node._hitTest(pos, this)) {
         event.type = EventType.MOUSE_DOWN;
@@ -98,10 +98,10 @@ var _mouseDownHandler = function (event) {
         node.dispatchEvent(event);
     }
 };
-var _mouseMoveHandler = function (event) {
-    var pos = event.getLocation();
-    var node = this.owner;
-    var hit = node._hitTest(pos, this);
+const _mouseMoveHandler = function (event) {
+    const pos = event.getLocation();
+    const node = this.owner;
+    const hit = node._hitTest(pos, this);
     if (hit) {
         if (!this._previousIn) {
             // Fix issue when hover node switched, previous hovered node won't get MOUSE_LEAVE notification
@@ -118,14 +118,12 @@ var _mouseMoveHandler = function (event) {
         event.type = EventType.MOUSE_MOVE;
         event.bubbles = true;
         node.dispatchEvent(event);
-    }
-    else if (this._previousIn) {
+    } else if (this._previousIn) {
         event.type = EventType.MOUSE_LEAVE;
         node.dispatchEvent(event);
         this._previousIn = false;
         _currentHovered = null;
-    }
-    else {
+    } else {
         // continue dispatching
         return;
     }
@@ -133,9 +131,9 @@ var _mouseMoveHandler = function (event) {
     // Event processed, cleanup
     event.stopPropagation();
 };
-var _mouseUpHandler = function (event) {
-    var pos = event.getLocation();
-    var node = this.owner;
+const _mouseUpHandler = function (event) {
+    const pos = event.getLocation();
+    const node = this.owner;
 
     if (node._hitTest(pos, this)) {
         event.type = EventType.MOUSE_UP;
@@ -144,9 +142,9 @@ var _mouseUpHandler = function (event) {
         event.stopPropagation();
     }
 };
-var _mouseWheelHandler = function (event) {
-    var pos = event.getLocation();
-    var node = this.owner;
+const _mouseWheelHandler = function (event) {
+    const pos = event.getLocation();
+    const node = this.owner;
 
     if (node._hitTest(pos, this)) {
         event.type = EventType.MOUSE_WHEEL;
@@ -156,8 +154,8 @@ var _mouseWheelHandler = function (event) {
     }
 };
 
-function _doDispatchEvent(owner, event) {
-    var target, i;
+function _doDispatchEvent (owner, event) {
+    let target, i;
     event.target = owner;
 
     // Event.CAPTURING_PHASE
@@ -220,12 +218,12 @@ enum NodeSpace {
 
 @ccclass('cc.Node')
 @mixins(EventTarget)
-class Node extends BaseNode {
+class Node extends EventTarget(BaseNode) {
     public static EventType = EventType;
     public static NodeSpace = NodeSpace;
 
     // is node but not scene
-    public static isNode(obj: object) {
+    public static isNode (obj: object) {
         return obj instanceof Node && (obj.constructor === Node || !(obj instanceof cc.Scene));
     }
     // local transform
@@ -254,16 +252,17 @@ class Node extends BaseNode {
     protected _matDirty = false;
     protected _eulerDirty = false;
 
-    protected _bubblingListeners = null;
-    protected _capturingListeners = null;
+    protected _bubblingListeners: EventTarget|null = null;
+    protected _capturingListeners: EventTarget | null = null;
+    protected _uiRectComp: UIRectComponent|null = null;
 
     @property({
         type: Vec3,
     })
-    set eulerAngles(val) {
+    set eulerAngles (val) {
         this.setRotationFromEuler(val.x, val.y, val.z);
     }
-    get eulerAngles() {
+    get eulerAngles () {
         if (this._eulerDirty) {
             quat.toEuler(this._euler, this._lrot);
             this._eulerDirty = false;
@@ -271,82 +270,89 @@ class Node extends BaseNode {
         return this._euler;
     }
 
-    set layer(l) {
+    set layer (l) {
         this._layer = l;
     }
 
-    get layer() {
+    get layer () {
         return this._layer;
     }
 
-    get width() {
-        if (!this._widget) {
+    get width () {
+        if (!this._uiRectComp) {
             return;
         }
 
-        return this._widget.width;
+        return this._uiRectComp.width;
     }
 
-    set width(value) {
-        if (!this._widget) {
+    set width (value) {
+        if (!this._uiRectComp) {
             return;
         }
 
-        this._widget.width = value;
+        this._uiRectComp.width = value;
     }
 
-    get height() {
-        if (!this._widget) {
+    get height () {
+        if (!this._uiRectComp) {
             return;
         }
 
-        return this._widget.height;
+        return this._uiRectComp.height;
     }
 
-    set height(value) {
-        if (!this._widget) {
+    set height (value) {
+        if (!this._uiRectComp) {
             return;
         }
-        this._widget.height = value;
+        this._uiRectComp.height = value;
     }
 
-    get anchorX() {
-        if (!this._widget) {
-            return
+    get anchorX () {
+        if (!this._uiRectComp) {
+            return;
         }
 
-        return this._widget.anchorX;
+        return this._uiRectComp.anchorX;
     }
 
-    set anchorX(value) {
-        if (!this._widget) {
-            return
+    set anchorX (value) {
+        if (!this._uiRectComp) {
+            return;
         }
 
-        this._widget.anchorX = value;
+        this._uiRectComp.anchorX = value;
     }
 
-    get anchorY() {
-        if (!this._widget) {
-            return
+    get anchorY () {
+        if (!this._uiRectComp) {
+            return;
         }
 
-        return this._widget.anchorY;
+        return this._uiRectComp.anchorY;
     }
 
-    set anchorY(value) {
-        if (!this._widget) {
-            return
+    set anchorY (value) {
+        if (!this._uiRectComp) {
+            return;
         }
 
-        this._widget.anchorY = value;
+        this._uiRectComp.anchorY = value;
     }
 
-    constructor(name: string) {
+    constructor (name: string) {
         super(name);
         EventTarget.call(this);
     }
 
+    public onEnable () {
+        this._uiRectComp = this.getComponent(UIRectComponent) as (UIRectComponent | null);
+    }
+
+    public onDisable () {
+        this._uiRectComp = null;
+    }
     // ===============================
     // hierarchy
     // ===============================
@@ -354,17 +360,17 @@ class Node extends BaseNode {
     /**
      * invalidate all children after relevant events
      */
-    public onRestore() {
+    public onRestore () {
         super.onRestore();
         this.invalidateChildren();
     }
 
-    public _onSetParent(oldParent: this) {
+    public _onSetParent (oldParent: this) {
         super._onSetParent(oldParent);
         this.invalidateChildren();
     }
 
-    public _onPostActivated() {
+    public _onPostActivated () {
         this.invalidateChildren();
     }
 
@@ -377,7 +383,7 @@ class Node extends BaseNode {
      * @param rot - rotation to apply
      * @param ns - the operating space
      */
-    public rotate(rot: Quat, ns?: NodeSpace) {
+    public rotate (rot: Quat, ns?: NodeSpace) {
         const space = ns || NodeSpace.LOCAL;
         if (space === NodeSpace.LOCAL) {
             this.getRotation(q_a);
@@ -393,7 +399,7 @@ class Node extends BaseNode {
      * @param rad - rotating angle
      * @param ns - the operating space
      */
-    public pitch(rad: number, ns?: NodeSpace) {
+    public pitch (rad: number, ns?: NodeSpace) {
         const space = ns || NodeSpace.LOCAL;
         if (space === NodeSpace.LOCAL) {
             this.getWorldRotation(q_a);
@@ -411,7 +417,7 @@ class Node extends BaseNode {
      * @param rad - rotating angle
      * @param ns - the operating space
      */
-    public yaw(rad: number, ns?: NodeSpace) {
+    public yaw (rad: number, ns?: NodeSpace) {
         const space = ns || NodeSpace.LOCAL;
         if (space === NodeSpace.LOCAL) {
             this.getWorldRotation(q_a);
@@ -429,7 +435,7 @@ class Node extends BaseNode {
      * @param rad - rotating angle
      * @param ns - the operating space
      */
-    public roll(rad: number, ns?: NodeSpace) {
+    public roll (rad: number, ns?: NodeSpace) {
         const space = (ns !== undefined ? ns : NodeSpace.LOCAL);
         if (space === NodeSpace.LOCAL) {
             this.getWorldRotation(q_a);
@@ -442,12 +448,12 @@ class Node extends BaseNode {
         }
     }
 
-    public get direction(): Vec3 {
+    public get direction (): Vec3 {
         this.getRotation(q_a);
         return vec3.transformQuat(new Vec3(), vec3.UNIT_Z, q_a);
     }
 
-    public set direction(dir: Vec3) {
+    public set direction (dir: Vec3) {
         quat.rotationTo(q_a, vec3.UNIT_Z, dir);
         this.setRotation(q_a);
     }
@@ -457,7 +463,7 @@ class Node extends BaseNode {
      * @param pos - target position
      * @param up - the up vector, default to (0,1,0)
      */
-    public lookAt(pos: Vec3, up: Vec3) {
+    public lookAt (pos: Vec3, up: Vec3) {
         this.getWorldPosition(v3_a);
         vec3.sub(v3_a, v3_a, pos); // NOTE: we use -z for view-dir
         vec3.normalize(v3_a, v3_a);
@@ -473,7 +479,7 @@ class Node extends BaseNode {
     /**
      * Reset the `hasChanged` flag recursively
      */
-    public resetHasChanged() {
+    public resetHasChanged () {
         this._hasChanged = false;
         const len = this._children.length;
         for (let i = 0; i < len; ++i) {
@@ -485,7 +491,7 @@ class Node extends BaseNode {
      * invalidate the world transform information
      * for this node and all its children recursively
      */
-    public invalidateChildren() {
+    public invalidateChildren () {
         if (this._dirty && this._hasChanged) { return; }
         this._dirty = this._hasChanged = true;
         for (const child of this._children) {
@@ -498,7 +504,7 @@ class Node extends BaseNode {
      * here we assume all nodes are children of a scene node,
      * which is always not dirty, has an identity transform and no parent.
      */
-    public updateWorldTransform() {
+    public updateWorldTransform () {
         if (!this._dirty) { return; }
         let cur: this | null = this;
         let i = 0;
@@ -527,7 +533,7 @@ class Node extends BaseNode {
         }
     }
 
-    public updateWorldTransformFull() {
+    public updateWorldTransformFull () {
         this.updateWorldTransform();
         if (!this._matDirty) { return; }
         mat4.fromRTS(this._mat, this._rot, this._pos, this._scale);
@@ -542,7 +548,7 @@ class Node extends BaseNode {
      * Sets local position.
      * @param position - The new local position.
      */
-    public setPosition(position: Vec3): void;
+    public setPosition (position: Vec3): void;
 
     /**
      * Sets local position.
@@ -551,7 +557,7 @@ class Node extends BaseNode {
      * @param z - The z component of the new local position.
      * @param w - The w component of the new local position.
      */
-    public setPosition(x: number, y: number, z: number): void;
+    public setPosition (x: number, y: number, z: number): void;
 
     /**
      * set local position
@@ -559,7 +565,7 @@ class Node extends BaseNode {
      * @param y - the y component of the new local position
      * @param z - the z component of the new local position
      */
-    public setPosition(val: Vec3 | number, y?: number, z?: number) {
+    public setPosition (val: Vec3 | number, y?: number, z?: number) {
         if (y === undefined || z === undefined) {
             vec3.copy(this._lpos, val);
         } else if (arguments.length === 3) {
@@ -576,7 +582,7 @@ class Node extends BaseNode {
      * @param out the receiving vector
      * @returns the resulting vector
      */
-    public getPosition(out?: Vec3): Vec3 {
+    public getPosition (out?: Vec3): Vec3 {
         if (out) {
             return vec3.set(out, this._lpos.x, this._lpos.y, this._lpos.z);
         } else {
@@ -588,7 +594,7 @@ class Node extends BaseNode {
      * Sets local rotation.
      * @param rotation - The new local rotation.
      */
-    public setRotation(rotation: Quat): void;
+    public setRotation (rotation: Quat): void;
 
     /**
      * Sets local rotation.
@@ -597,9 +603,9 @@ class Node extends BaseNode {
      * @param z - The z component of the new local rotation.
      * @param w - The w component of the new local rotation.
      */
-    public setRotation(x: number, y: number, z: number, w: number): void;
+    public setRotation (x: number, y: number, z: number, w: number): void;
 
-    public setRotation(val: Quat | number, y?: number, z?: number, w?: number) {
+    public setRotation (val: Quat | number, y?: number, z?: number, w?: number) {
         if (y === undefined || z === undefined || w === undefined) {
             quat.copy(this._lrot, val);
         } else if (arguments.length === 4) {
@@ -618,7 +624,7 @@ class Node extends BaseNode {
      * @param y - Angle to rotate around Y axis in degrees.
      * @param z - Angle to rotate around Z axis in degrees.
      */
-    public setRotationFromEuler(x: number, y: number, z: number) {
+    public setRotationFromEuler (x: number, y: number, z: number) {
         vec3.set(this._euler, x, y, z);
         this._eulerDirty = false;
         quat.fromEuler(this._lrot, x, y, z);
@@ -633,7 +639,7 @@ class Node extends BaseNode {
      * @param out - the receiving quaternion
      * @returns the resulting quaternion
      */
-    public getRotation(out?: Quat): Quat {
+    public getRotation (out?: Quat): Quat {
         if (out) {
             return quat.set(out, this._lrot.x, this._lrot.y, this._lrot.z, this._lrot.w);
         } else {
@@ -645,7 +651,7 @@ class Node extends BaseNode {
      * Sets local scale.
      * @param scale - The new local scale.
      */
-    public setScale(scale: Vec3): void;
+    public setScale (scale: Vec3): void;
 
     /**
      * Sets local scale.
@@ -653,7 +659,7 @@ class Node extends BaseNode {
      * @param y - The y component of the new local scale.
      * @param z - The z component of the new local scale.
      */
-    public setScale(x: number, y: number, z: number): void;
+    public setScale (x: number, y: number, z: number): void;
 
     /**
      * set local scale
@@ -661,7 +667,7 @@ class Node extends BaseNode {
      * @param y - the y component of the new local scale
      * @param z - the z component of the new local scale
      */
-    public setScale(val: Vec3 | number, y?: number, z?: number) {
+    public setScale (val: Vec3 | number, y?: number, z?: number) {
         if (y === undefined || z === undefined) {
             vec3.copy(this._lscale, val);
         } else if (arguments.length === 3) {
@@ -678,7 +684,7 @@ class Node extends BaseNode {
      * @param out - the receiving vector
      * @returns the resulting vector
      */
-    public getScale(out?: Vec3): Vec3 {
+    public getScale (out?: Vec3): Vec3 {
         if (out) {
             return vec3.set(out, this._lscale.x, this._lscale.y, this._lscale.z);
         } else {
@@ -690,7 +696,7 @@ class Node extends BaseNode {
      * Sets world position.
      * @param position - The new world position.
      */
-    public setWorldPosition(position: Vec3): void;
+    public setWorldPosition (position: Vec3): void;
 
     /**
      * Sets world position.
@@ -698,7 +704,7 @@ class Node extends BaseNode {
      * @param y - The y component of the new world position.
      * @param z - The z component of the new world position.
      */
-    public setWorldPosition(x: number, y: number, z: number): void;
+    public setWorldPosition (x: number, y: number, z: number): void;
 
     /**
      * set world position
@@ -706,7 +712,7 @@ class Node extends BaseNode {
      * @param y - the y component of the new world position
      * @param z - the z component of the new world position
      */
-    public setWorldPosition(val: Vec3 | number, y?: number, z?: number) {
+    public setWorldPosition (val: Vec3 | number, y?: number, z?: number) {
         if (y === undefined || z === undefined) {
             vec3.copy(this._pos, val);
         } else if (arguments.length === 3) {
@@ -732,7 +738,7 @@ class Node extends BaseNode {
      * @param out - the receiving vector
      * @returns the resulting vector
      */
-    public getWorldPosition(out?: Vec3): Vec3 {
+    public getWorldPosition (out?: Vec3): Vec3 {
         this.updateWorldTransform();
         if (out) {
             return vec3.copy(out, this._pos);
@@ -745,7 +751,7 @@ class Node extends BaseNode {
      * Sets world rotation.
      * @param rotation - The new world rotation.
      */
-    public setWorldRotation(rotation: Quat): void;
+    public setWorldRotation (rotation: Quat): void;
 
     /**
      * Sets world rotation.
@@ -754,7 +760,7 @@ class Node extends BaseNode {
      * @param z - The z component of the new world rotation.
      * @param w - The w component of the new world rotation.
      */
-    public setWorldRotation(x: number, y: number, z: number, w: number): void;
+    public setWorldRotation (x: number, y: number, z: number, w: number): void;
 
     /**
      * set world rotation
@@ -763,7 +769,7 @@ class Node extends BaseNode {
      * @param z - the z component of the new world rotation
      * @param w - the w component of the new world rotation
      */
-    public setWorldRotation(val: Quat | number, y?: number, z?: number, w?: number) {
+    public setWorldRotation (val: Quat | number, y?: number, z?: number, w?: number) {
         if (y === undefined || z === undefined || w === undefined) {
             quat.copy(this._rot, val);
         } else if (arguments.length === 4) {
@@ -787,7 +793,7 @@ class Node extends BaseNode {
      * @param y - Angle to rotate around Y axis in degrees.
      * @param z - Angle to rotate around Z axis in degrees.
      */
-    public setWorldRotationFromEuler(x: number, y: number, z: number) {
+    public setWorldRotationFromEuler (x: number, y: number, z: number) {
         vec3.set(this._euler, x, y, z);
         this._eulerDirty = false;
         quat.fromEuler(this._rot, x, y, z);
@@ -807,7 +813,7 @@ class Node extends BaseNode {
      * @param out - the receiving quaternion
      * @returns the resulting quaternion
      */
-    public getWorldRotation(out?: Quat): Quat {
+    public getWorldRotation (out?: Quat): Quat {
         this.updateWorldTransform();
         if (out) {
             return quat.copy(out, this._rot);
@@ -820,7 +826,7 @@ class Node extends BaseNode {
      * Sets world scale.
      * @param scale - The new world scale.
      */
-    public setWorldScale(scale: Vec3): void;
+    public setWorldScale (scale: Vec3): void;
 
     /**
      * Sets world scale.
@@ -828,7 +834,7 @@ class Node extends BaseNode {
      * @param y - The y component of the new world scale.
      * @param z - The z component of the new world scale.
      */
-    public setWorldScale(x: number, y: number, z: number): void;
+    public setWorldScale (x: number, y: number, z: number): void;
 
     /**
      * set world scale
@@ -836,11 +842,11 @@ class Node extends BaseNode {
      * @param y - the y component of the new world scale
      * @param z - the z component of the new world scale
      */
-    public setWorldScale(val: Vec3 | number, y?: number, z?: number) {
+    public setWorldScale (val: Vec3 | number, y?: number, z?: number) {
         if (y === undefined || z === undefined) {
-            vec3.copy(this._scale, val);
+            vec3.copy(this._scale, val as Vec3);
         } else if (arguments.length === 3) {
-            vec3.set(this._scale, val, y, z);
+            vec3.set(this._scale, val as number, y, z);
         }
         if (this._parent) {
             this._parent.getWorldScale(v3_a);
@@ -858,7 +864,7 @@ class Node extends BaseNode {
      * @param out - the receiving vector
      * @returns the resulting vector
      */
-    public getWorldScale(out?: Vec3): Vec3 {
+    public getWorldScale (out?: Vec3): Vec3 {
         this.updateWorldTransform();
         if (out) {
             return vec3.copy(out, this._scale);
@@ -872,7 +878,7 @@ class Node extends BaseNode {
      * @param out - the receiving matrix
      * @returns the - resulting matrix
      */
-    public getWorldMatrix(out?: Mat4): Mat4 {
+    public getWorldMatrix (out?: Mat4): Mat4 {
         this.updateWorldTransformFull();
         if (out) {
             return mat4.copy(out, this._mat);
@@ -886,7 +892,7 @@ class Node extends BaseNode {
      * @param out - the receiving matrix
      * @returns the - resulting matrix
      */
-    public getWorldRS(out?: Mat4): Mat4 {
+    public getWorldRS (out?: Mat4): Mat4 {
         this.updateWorldTransformFull();
         if (out) {
             mat4.copy(out, this._mat);
@@ -902,7 +908,7 @@ class Node extends BaseNode {
      * @param out - the receiving matrix
      * @returns the - resulting matrix
      */
-    public getWorldRT(out?: Mat4): Mat4 {
+    public getWorldRT (out?: Mat4): Mat4 {
         this.updateWorldTransform();
         if (!out) {
             out = new Mat4();
@@ -910,41 +916,41 @@ class Node extends BaseNode {
         return mat4.fromRT(out, this._rot, this._pos);
     }
 
-    public getAnchorPoint() {
-        if (!this._widget) {
-            return
+    public getAnchorPoint () {
+        if (!this._uiRectComp) {
+            return;
         }
 
-        return this._widget.anchorPoint;
+        return this._uiRectComp.anchorPoint;
     }
 
-    public setAnchorPoint(point: Vec2, y: number) {
-        if (!this._widget) {
-            return
+    public setAnchorPoint (point: Vec2, y: number) {
+        if (!this._uiRectComp) {
+            return;
         }
 
-        this._widget.setAnchorPoint(point, y);
+        this._uiRectComp.setAnchorPoint(point, y);
     }
 
-    public getContentSize() {
-        if (!this._widget) {
-            return
+    public getContentSize () {
+        if (!this._uiRectComp) {
+            return;
         }
 
-        return this._widget.contentSize;
+        return this._uiRectComp.contentSize;
     }
 
-    public setContentSize(size: Size, height: number) {
-        if (!this._widget) {
-            return
+    public setContentSize (size: Size, height: number = 0) {
+        if (!this._uiRectComp) {
+            return;
         }
 
-        this._widget.setContentSize(size.height);
+        this._uiRectComp.setContentSize(size.height);
     }
 
     // EVENT TARGET
 
-    _checknSetupSysEvent(type) {
+    public _checknSetupSysEvent (type) {
         let newAdded = false;
         let forDispatch = false;
         if (_touchEvents.indexOf(type) !== -1) {
@@ -957,14 +963,13 @@ class Node extends BaseNode {
                     onTouchBegan: _touchStartHandler,
                     onTouchMoved: _touchMoveHandler,
                     onTouchEnded: _touchEndHandler,
-                    onTouchCancelled: _touchCancelHandler
+                    onTouchCancelled: _touchCancelHandler,
                 });
                 eventManager.addListener(this._touchListener, this);
                 newAdded = true;
             }
             forDispatch = true;
-        }
-        else if (_mouseEvents.indexOf(type) !== -1) {
+        } else if (_mouseEvents.indexOf(type) !== -1) {
             if (!this._mouseListener) {
                 this._mouseListener = cc.EventListener.create({
                     event: cc.EventListener.MOUSE,
@@ -992,56 +997,55 @@ class Node extends BaseNode {
     }
 
     /**
-    * !#en
-    * Register a callback of a specific event type on Node.<br/>
-    * Use this method to register touch or mouse event permit propagation based on scene graph,<br/>
-    * These kinds of event are triggered with dispatchEvent, the dispatch process has three steps:<br/>
-    * 1. Capturing phase: dispatch in capture targets (`_getCapturingTargets`), e.g. parents in node tree, from root to the real target<br/>
-    * 2. At target phase: dispatch to the listeners of the real target<br/>
-    * 3. Bubbling phase: dispatch in bubble targets (`_getBubblingTargets`), e.g. parents in node tree, from the real target to root<br/>
-    * In any moment of the dispatching process, it can be stopped via `event.stopPropagation()` or `event.stopPropagationImmidiate()`.<br/>
-    * It's the recommended way to register touch/mouse event for Node,<br/>
-    * please do not use cc.eventManager directly for Node.<br/>
-    * You can also register custom event and use `emit` to trigger custom event on Node.<br/>
-    * For such events, there won't be capturing and bubbling phase, your event will be dispatched directly to its listeners registered on the same node.<br/>
-    * You can also pass event callback parameters with `emit` by passing parameters after `type`.
-    * !#zh
-    * 在节点上注册指定类型的回调函数，也可以设置 target 用于绑定响应函数的 this 对象。<br/>
-    * 鼠标或触摸事件会被系统调用 dispatchEvent 方法触发，触发的过程包含三个阶段：<br/>
-    * 1. 捕获阶段：派发事件给捕获目标（通过 `_getCapturingTargets` 获取），比如，节点树中注册了捕获阶段的父节点，从根节点开始派发直到目标节点。<br/>
-    * 2. 目标阶段：派发给目标节点的监听器。<br/>
-    * 3. 冒泡阶段：派发事件给冒泡目标（通过 `_getBubblingTargets` 获取），比如，节点树中注册了冒泡阶段的父节点，从目标节点开始派发知道根节点。<br/>
-    * 同时您可以将事件派发到父节点或者通过调用 stopPropagation 拦截它。<br/>
-    * 推荐使用这种方式来监听节点上的触摸或鼠标事件，请不要在节点上直接使用 cc.eventManager。<br/>
-    * 你也可以注册自定义事件到节点上，并通过 emit 方法触发此类事件，对于这类事件，不会发生捕获冒泡阶段，只会直接派发给注册在该节点上的监听器<br/>
-    * 你可以通过在 emit 方法调用时在 type 之后传递额外的参数作为事件回调的参数列表
-    * @method on
-    * @param {String|Node.EventType} type - A string representing the event type to listen for.<br>See {{#crossLink "Node/EventTyupe/POSITION_CHANGED"}}Node Events{{/crossLink}} for all builtin events.
-    * @param {Function} callback - The callback that will be invoked when the event is dispatched. The callback is ignored if it is a duplicate (the callbacks are unique).
-    * @param {Event|any} [callback.event] event or first argument when emit
-    * @param {any} [callback.arg2] arg2
-    * @param {any} [callback.arg3] arg3
-    * @param {any} [callback.arg4] arg4
-    * @param {any} [callback.arg5] arg5
-    * @param {Object} [target] - The target (this object) to invoke the callback, can be null
-    * @param {Boolean} [useCapture=false] - When set to true, the listener will be triggered at capturing phase which is ahead of the final target emit, otherwise it will be triggered during bubbling phase.
-    * @return {Function} - Just returns the incoming callback so you can save the anonymous function easier.
-    * @typescript
-    * on<T extends Function>(type: string, callback: T, target?: any, useCapture?: boolean): T
-    * @example
-    * this.node.on(cc.Node.EventType.TOUCH_START, this.memberFunction, this);  // if "this" is component and the "memberFunction" declared in CCClass.
-    * node.on(cc.Node.EventType.TOUCH_START, callback, this);
-    * node.on(cc.Node.EventType.TOUCH_MOVE, callback, this);
-    * node.on(cc.Node.EventType.TOUCH_END, callback, this);
-    * node.on(cc.Node.EventType.TOUCH_CANCEL, callback, this);
-    * node.on(cc.Node.EventType.ANCHOR_CHANGED, callback);
-    */
-    on(type, callback, target, useCapture) {
-        let forDispatch = this._checknSetupSysEvent(type);
+     * !#en
+     * Register a callback of a specific event type on Node.<br/>
+     * Use this method to register touch or mouse event permit propagation based on scene graph,<br/>
+     * These kinds of event are triggered with dispatchEvent, the dispatch process has three steps:<br/>
+     * 1. Capturing phase: dispatch in capture targets (`_getCapturingTargets`), e.g. parents in node tree, from root to the real target<br/>
+     * 2. At target phase: dispatch to the listeners of the real target<br/>
+     * 3. Bubbling phase: dispatch in bubble targets (`_getBubblingTargets`), e.g. parents in node tree, from the real target to root<br/>
+     * In any moment of the dispatching process, it can be stopped via `event.stopPropagation()` or `event.stopPropagationImmidiate()`.<br/>
+     * It's the recommended way to register touch/mouse event for Node,<br/>
+     * please do not use cc.eventManager directly for Node.<br/>
+     * You can also register custom event and use `emit` to trigger custom event on Node.<br/>
+     * For such events, there won't be capturing and bubbling phase, your event will be dispatched directly to its listeners registered on the same node.<br/>
+     * You can also pass event callback parameters with `emit` by passing parameters after `type`.
+     * !#zh
+     * 在节点上注册指定类型的回调函数，也可以设置 target 用于绑定响应函数的 this 对象。<br/>
+     * 鼠标或触摸事件会被系统调用 dispatchEvent 方法触发，触发的过程包含三个阶段：<br/>
+     * 1. 捕获阶段：派发事件给捕获目标（通过 `_getCapturingTargets` 获取），比如，节点树中注册了捕获阶段的父节点，从根节点开始派发直到目标节点。<br/>
+     * 2. 目标阶段：派发给目标节点的监听器。<br/>
+     * 3. 冒泡阶段：派发事件给冒泡目标（通过 `_getBubblingTargets` 获取），比如，节点树中注册了冒泡阶段的父节点，从目标节点开始派发知道根节点。<br/>
+     * 同时您可以将事件派发到父节点或者通过调用 stopPropagation 拦截它。<br/>
+     * 推荐使用这种方式来监听节点上的触摸或鼠标事件，请不要在节点上直接使用 cc.eventManager。<br/>
+     * 你也可以注册自定义事件到节点上，并通过 emit 方法触发此类事件，对于这类事件，不会发生捕获冒泡阶段，只会直接派发给注册在该节点上的监听器<br/>
+     * 你可以通过在 emit 方法调用时在 type 之后传递额外的参数作为事件回调的参数列表
+     * @method on
+     * @param {String|Node.EventType} type - A string representing the event type to listen for.<br>See {{#crossLink "Node/EventTyupe/POSITION_CHANGED"}}Node Events{{/crossLink}} for all builtin events.
+     * @param {Function} callback - The callback that will be invoked when the event is dispatched. The callback is ignored if it is a duplicate (the callbacks are unique).
+     * @param {Event|any} [callback.event] event or first argument when emit
+     * @param {any} [callback.arg2] arg2
+     * @param {any} [callback.arg3] arg3
+     * @param {any} [callback.arg4] arg4
+     * @param {any} [callback.arg5] arg5
+     * @param {Object} [target] - The target (this object) to invoke the callback, can be null
+     * @param {Boolean} [useCapture=false] - When set to true, the listener will be triggered at capturing phase which is ahead of the final target emit, otherwise it will be triggered during bubbling phase.
+     * @return {Function} - Just returns the incoming callback so you can save the anonymous function easier.
+     * @typescript
+     * on<T extends Function>(type: string, callback: T, target?: any, useCapture?: boolean): T
+     * @example
+     * this.node.on(cc.Node.EventType.TOUCH_START, this.memberFunction, this);  // if "this" is component and the "memberFunction" declared in CCClass.
+     * node.on(cc.Node.EventType.TOUCH_START, callback, this);
+     * node.on(cc.Node.EventType.TOUCH_MOVE, callback, this);
+     * node.on(cc.Node.EventType.TOUCH_END, callback, this);
+     * node.on(cc.Node.EventType.TOUCH_CANCEL, callback, this);
+     * node.on(cc.Node.EventType.ANCHOR_CHANGED, callback);
+     */
+    public on (type, callback, target, useCapture) {
+        const forDispatch = this._checknSetupSysEvent(type);
         if (forDispatch) {
             return this._onDispatch(type, callback, target, useCapture);
-        }
-        else {
+        } else {
             // switch (type) {
             //     case EventType.POSITION_CHANGED:
             //         this._eventMask |= POSITION_ON;
@@ -1113,31 +1117,30 @@ class Node extends BaseNode {
     //     }
     // }
 
-    _onDispatch(type, callback, target, useCapture) {
+    public _onDispatch (type, callback, target, useCapture) {
         // Accept also patameters like: (type, callback, useCapture)
         if (typeof target === 'boolean') {
             useCapture = target;
             target = undefined;
-        }
-        else useCapture = !!useCapture;
+        } else { useCapture = !!useCapture; }
         if (!callback) {
             cc.errorID(6800);
             return;
         }
 
-        var listeners = null;
+        let listeners = null;
         if (useCapture) {
             listeners = this._capturingListeners = this._capturingListeners || new EventTarget();
-        }
-        else {
+        } else {
             listeners = this._bubblingListeners = this._bubblingListeners || new EventTarget();
         }
 
         if (!listeners.hasEventListener(type, callback, target)) {
             listeners.add(type, callback, target);
 
-            if (target && target.__eventTargets)
+            if (target && target.__eventTargets) {
                 target.__eventTargets.push(this);
+            }
         }
 
         return callback;
@@ -1158,9 +1161,9 @@ class Node extends BaseNode {
      * node.off(cc.Node.EventType.TOUCH_START, callback, this.node);
      * node.off(cc.Node.EventType.ANCHOR_CHANGED, callback, this);
      */
-    off(type, callback, target, useCapture) {
-        let touchEvent = _touchEvents.indexOf(type) !== -1;
-        let mouseEvent = !touchEvent && _mouseEvents.indexOf(type) !== -1;
+    public off (type, callback, target, useCapture) {
+        const touchEvent = _touchEvents.indexOf(type) !== -1;
+        const mouseEvent = !touchEvent && _mouseEvents.indexOf(type) !== -1;
         if (touchEvent || mouseEvent) {
             this._offDispatch(type, callback, target, useCapture);
 
@@ -1169,54 +1172,50 @@ class Node extends BaseNode {
                     eventManager.removeListener(this._touchListener);
                     this._touchListener = null;
                 }
-            }
-            else if (mouseEvent) {
+            } else if (mouseEvent) {
                 if (this._mouseListener && !_checkListeners(this, _mouseEvents)) {
                     eventManager.removeListener(this._mouseListener);
                     this._mouseListener = null;
                 }
             }
-        }
-        else if (this._bubblingListeners) {
+        } else if (this._bubblingListeners) {
             this._bubblingListeners.off(type, callback, target);
 
-            var hasListeners = this._bubblingListeners.hasEventListener(type);
+            const hasListeners = this._bubblingListeners.hasEventListener(type);
             // All listener removed
-            if (!hasListeners) {
-                switch (type) {
-                    case EventType.POSITION_CHANGED:
-                        this._eventMask &= ~POSITION_ON;
-                        break;
-                    case EventType.SCALE_CHANGED:
-                        this._eventMask &= ~SCALE_ON;
-                        break;
-                    case EventType.ROTATION_CHANGED:
-                        this._eventMask &= ~ROTATION_ON;
-                        break;
-                    case EventType.SIZE_CHANGED:
-                        this._eventMask &= ~SIZE_ON;
-                        break;
-                    case EventType.ANCHOR_CHANGED:
-                        this._eventMask &= ~ANCHOR_ON;
-                        break;
-                }
-            }
+            // if (!hasListeners) {
+            //     switch (type) {
+            //         case EventType.POSITION_CHANGED:
+            //             this._eventMask &= ~POSITION_ON;
+            //             break;
+            //         case EventType.SCALE_CHANGED:
+            //             this._eventMask &= ~SCALE_ON;
+            //             break;
+            //         case EventType.ROTATION_CHANGED:
+            //             this._eventMask &= ~ROTATION_ON;
+            //             break;
+            //         case EventType.SIZE_CHANGED:
+            //             this._eventMask &= ~SIZE_ON;
+            //             break;
+            //         case EventType.ANCHOR_CHANGED:
+            //             this._eventMask &= ~ANCHOR_ON;
+            //             break;
+            //     }
+            // }
         }
     }
 
-    _offDispatch(type, callback, target, useCapture) {
+    public _offDispatch (type, callback, target, useCapture) {
         // Accept also patameters like: (type, callback, useCapture)
         if (typeof target === 'boolean') {
             useCapture = target;
             target = undefined;
-        }
-        else useCapture = !!useCapture;
+        } else { useCapture = !!useCapture; }
         if (!callback) {
             this._capturingListeners && this._capturingListeners.removeAll(type);
             this._bubblingListeners && this._bubblingListeners.removeAll(type);
-        }
-        else {
-            var listeners = useCapture ? this._capturingListeners : this._bubblingListeners;
+        } else {
+            const listeners = useCapture ? this._capturingListeners : this._bubblingListeners;
             if (listeners) {
                 listeners.remove(type, callback, target);
 
@@ -1246,9 +1245,9 @@ class Node extends BaseNode {
      * eventTarget.emit('fire', event);
      * eventTarget.emit('fire', message, emitter);
      */
-    emit(type, arg1, arg2, arg3, arg4, arg5) {
+    public emit (type, ...args: any[]) {
         if (this._bubblingListeners) {
-            this._bubblingListeners.emit(type, arg1, arg2, arg3, arg4, arg5);
+            this._bubblingListeners.emit(type, ...args);
         }
     }
 
@@ -1261,7 +1260,7 @@ class Node extends BaseNode {
      * @method dispatchEvent
      * @param {Event} event - The Event object that is dispatched into the event flow
      */
-    dispatchEvent(event) {
+    public dispatchEvent (event) {
         _doDispatchEvent(this, event);
         _cachedArray.length = 0;
     }
@@ -1270,10 +1269,10 @@ class Node extends BaseNode {
 if (CC_EDITOR) {
     const repeat = (t: number, l: number) => t - Math.floor(t / l) * l;
     Object.defineProperty(Node.prototype, 'eulerAngles', {
-        set(val: Vec3) {
+        set (val: Vec3) {
             this.setRotationFromEuler(val.x, val.y, val.z);
         },
-        get() {
+        get () {
             if (this._eulerDirty) {
                 const eu = this._euler;
                 quat.toEuler(v3_a, this._lrot);

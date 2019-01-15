@@ -23,13 +23,13 @@
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE.
  ****************************************************************************/
+import ComponentEventHandler from '../../../components/CCComponentEventHandler';
+import { ccclass, executeInEditMode, executionOrder, menu, property } from '../../../core/data/class-decorator';
 import ButtonComponent from './button-component';
-import { ccclass, menu, executionOrder, executeInEditMode, property } from '../../../core/data/class-decorator';
-import ToggleGroupComponent from './toggle-group-component';
 // import * as js from '../../core/utils/js';
 import RenderComponent from './render-component';
-import ComponentEventHandler from '../../../components/CCComponentEventHandler'
 import SpriteComponent from './sprite-component';
+import ToggleGroupComponent from './toggle-group-component';
 
 /**
  * !#en The toggle component is a CheckBox, when it used together with a ToggleGroup, it
@@ -44,13 +44,13 @@ import SpriteComponent from './sprite-component';
 @executeInEditMode
 export default class ToggleComponent extends ButtonComponent {
     @property
-    _isChecked: boolean = true;
+    public _isChecked: boolean = true;
     @property
-    _toggleGroup: ToggleGroupComponent | null = null;
+    public _toggleGroup: ToggleGroupComponent | null = null;
     @property
-    _checkMark: SpriteComponent | null = null;
+    public _checkMark: SpriteComponent | null = null;
     @property
-    _checkEvents: ComponentEventHandler[] = [];
+    public _checkEvents: ComponentEventHandler[] = [];
 
     /**
      * !#en When this value is true, the check mark component will be enabled, otherwise
@@ -59,16 +59,16 @@ export default class ToggleComponent extends ButtonComponent {
      * @property {Boolean} isChecked
      */
     @property
-    get isChecked() {
+    get isChecked () {
         return this._isChecked;
     }
 
-    set isChecked(value) {
+    set isChecked (value) {
         if (this._isChecked === value) {
-            return
+            return;
         }
 
-        this._isChecked = value
+        this._isChecked = value;
         this._updateCheckMark();
     }
 
@@ -80,13 +80,13 @@ export default class ToggleComponent extends ButtonComponent {
      * @property {ToggleGroup} toggleGroup
      */
     @property({
-        type: ToggleGroupComponent
+        type: ToggleGroupComponent,
     })
-    get toggleGroup() {
+    get toggleGroup () {
         return this._toggleGroup;
     }
 
-    set toggleGroup(value) {
+    set toggleGroup (value) {
         if (this._toggleGroup === value) {
             return;
         }
@@ -106,13 +106,13 @@ export default class ToggleComponent extends ButtonComponent {
      * @property {Sprite} checkMark
      */
     @property({
-        type: SpriteComponent
+        type: SpriteComponent,
     })
-    get checkMark() {
+    get checkMark () {
         return this._checkMark;
     }
 
-    set checkMark(value: SpriteComponent) {
+    set checkMark (value: SpriteComponent) {
         if (this._checkMark === value) {
             return;
         }
@@ -126,24 +126,24 @@ export default class ToggleComponent extends ButtonComponent {
      * @property {ComponentEventHandler[]} checkEvents
      */
     @property({
-        type: ComponentEventHandler
+        type: ComponentEventHandler,
     })
-    get checkEvents() {
+    get checkEvents () {
         return this._checkEvents;
     }
 
-    set checkEvents(value: ComponentEventHandler[]) {
+    set checkEvents (value: ComponentEventHandler[]) {
         this._checkEvents = value;
     }
 
-    set _resizeToTarget(value: boolean) {
+    set _resizeToTarget (value: boolean) {
         if (value) {
             this._resizeNodeToTargetNode();
         }
     }
 
-    get _toggleContainer() {
-        let parent = this.node.parent;
+    get _toggleContainer () {
+        const parent = this.node.parent;
         // TODO:
         // if (cc.Node.isNode(parent)) {
         //     return parent.getComponent(cc.ToggleContainer);
@@ -151,7 +151,7 @@ export default class ToggleComponent extends ButtonComponent {
         return null;
     }
 
-    onEnable() {
+    public onEnable () {
         super.onEnable();
         if (!CC_EDITOR) {
             this._registerToggleEvent();
@@ -162,7 +162,7 @@ export default class ToggleComponent extends ButtonComponent {
         }
     }
 
-    onDisable() {
+    public onDisable () {
         super.onEnable();
         if (!CC_EDITOR) {
             this._unregisterToggleEvent();
@@ -172,7 +172,7 @@ export default class ToggleComponent extends ButtonComponent {
         }
     }
 
-    _updateCheckMark() {
+    public _updateCheckMark () {
         if (this._checkMark) {
             this._checkMark.node.active = !!this.isChecked;
         }
@@ -191,16 +191,16 @@ export default class ToggleComponent extends ButtonComponent {
     //     }
     // }
 
-    _registerToggleEvent() {
+    public _registerToggleEvent () {
         this.node.on('click', this.toggle, this);
     }
 
-    _unregisterToggleEvent() {
+    public _unregisterToggleEvent () {
         this.node.off('click', this.toggle, this);
     }
 
-    toggle(event) {
-        var group = this.toggleGroup || this._toggleContainer;
+    public toggle (event) {
+        const group = this.toggleGroup || this._toggleContainer;
 
         if (group && group.enabled && this.isChecked) {
             if (!group.allowSwitchOff) {
@@ -219,7 +219,7 @@ export default class ToggleComponent extends ButtonComponent {
         this._emitToggleEvents();
     }
 
-    _emitToggleEvents() {
+    public _emitToggleEvents () {
         this.node.emit('toggle', this);
         if (this._checkEvents) {
             ComponentEventHandler.emitEvents(this._checkEvents, this);
@@ -231,8 +231,8 @@ export default class ToggleComponent extends ButtonComponent {
      * !#zh 使 toggle 按钮处于选中状态
      * @method check
      */
-    check() {
-        var group = this.toggleGroup || this._toggleContainer;
+    public check () {
+        const group = this.toggleGroup || this._toggleContainer;
 
         if (group && group.enabled && this.isChecked) {
             if (!group.allowSwitchOff) {
@@ -254,8 +254,8 @@ export default class ToggleComponent extends ButtonComponent {
      * !#zh 使 toggle 按钮处于未选中状态
      * @method uncheck
      */
-    uncheck() {
-        var group = this.toggleGroup || this._toggleContainer;
+    public uncheck () {
+        const group = this.toggleGroup || this._toggleContainer;
 
         if (group && group.enabled && this.isChecked) {
             if (!group.allowSwitchOff) {
@@ -270,7 +270,6 @@ export default class ToggleComponent extends ButtonComponent {
 }
 
 // cc.Toggle = module.exports = Toggle;
-
 
 // var js = require('../platform/js');
 

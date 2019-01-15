@@ -24,21 +24,20 @@
  THE SOFTWARE.
  ****************************************************************************/
 // @ts-check
-import { clampf } from '../../../core/utils/misc';
-import RenderComponent from './render-component';
-import { ccclass, property, menu, executionOrder, executeInEditMode, requireComponent } from '../../../core/data/class-decorator';
-import SpriteFrame from '../../../assets/CCSpriteFrame';
 import atlas from '../../../assets/CCSpriteAtlas';
+import SpriteFrame from '../../../assets/CCSpriteFrame';
+import { ccclass, executeInEditMode, executionOrder, menu, property } from '../../../core/data/class-decorator';
+import { clampf } from '../../../core/utils/misc';
 import { Vec2 } from '../../../core/value-types';
 import MeshBuffer from '../render-data/mesh-buffer';
-import UIRectComponent from './ui-rect-component';
+import RenderComponent from './render-component';
 
 /**
  * !#en Enum for sprite type.
  * !#zh Sprite 类型
  * @enum Sprite.Type
  */
-var SpriteType = cc.Enum({
+const SpriteType = cc.Enum({
     /**
      * !#en The simple type.
      * !#zh 普通类型
@@ -76,7 +75,7 @@ var SpriteType = cc.Enum({
  * !#zh 填充类型
  * @enum Sprite.FillType
  */
-var FillType = cc.Enum({
+const FillType = cc.Enum({
     /**
      * !#en The horizontal fill.
      * !#zh 水平方向填充
@@ -141,57 +140,33 @@ var FillType = cc.Enum({
 @ccclass('cc.SpriteComponent')
 @executionOrder(100)
 @menu('UI/Sprite')
-@requireComponent(UIRectComponent)
 @executeInEditMode
 export default class SpriteComponent extends RenderComponent {
-    @property
-    _spriteFrame: SpriteFrame | null = null;
-    @property
-    _type: number = SpriteType.SIMPLE;
-    @property
-    _fillType: number = FillType.HORIZONTAL;
-    // @property
-    // _sizeMode = SizeMode.TRIMMED;
-    @property
-    _fillCenter: Vec2 = cc.v2(0, 0);
-    @property
-    _fillStart: number = 0;
-    @property
-    _fillRange: number = 0;
-    // @property
-    // _isTrimmedMode = true;
-    // _state = 0;
-    //TODO:
-    @property
-    _atlas: atlas | null = null;
-    _assembler = null;
 
     /**
-         * !#en The sprite frame of the sprite.
-         * !#zh 精灵的精灵帧
-         * @property spriteFrame
-         * @type {SpriteFrame}
-         * @example
-         * sprite.spriteFrame = newSpriteFrame;
-         */
+     * !#en The sprite frame of the sprite.
+     * !#zh 精灵的精灵帧
+     * @return {SpriteFrame}
+     */
     @property({
-        type: SpriteFrame
+        type: SpriteFrame,
     })
-    get spriteFrame() {
+    get spriteFrame () {
         return this._spriteFrame;
     }
 
-    set spriteFrame(value: SpriteFrame | null) {
+    set spriteFrame (value: SpriteFrame | null) {
         if (this._spriteFrame === value) {
             return;
         }
 
-        let lastSprite = this._spriteFrame;
+        const lastSprite = this._spriteFrame;
         this._spriteFrame = value;
         // render & update render data flag will be triggered while applying new sprite frame
         this.markForUpdateRenderData(false);
         this._applySpriteFrame(lastSprite);
         if (CC_EDITOR) {
+            // @ts-ignore
             this.node.emit('spriteframe-changed', this);
         }
     }
@@ -205,12 +180,12 @@ export default class SpriteComponent extends RenderComponent {
      * sprite.type = cc.Sprite.Type.SIMPLE;
      */
     @property({
-        type: SpriteType
+        type: SpriteType,
     })
-    get type() {
+    get type () {
         return this._type;
     }
-    set type(value: number) {
+    set type (value: number) {
         if (this._type !== value) {
             this._type = value;
             this._updateAssembler();
@@ -228,18 +203,17 @@ export default class SpriteComponent extends RenderComponent {
      * sprite.fillType = SpriteComponent.FillType.HORIZONTAL;
      */
     @property({
-        type: FillType
+        type: FillType,
     })
-    get fillType() {
+    get fillType () {
         return this._fillType;
     }
-    set fillType(value: number) {
+    set fillType (value: number) {
         if (value !== this._fillType) {
             if (value === FillType.RADIAL || this._fillType === FillType.RADIAL) {
                 // this.destroyRenderData(/*this._renderData*/);
                 this._renderData = null;
-            }
-            else if (this._renderData) {
+            } else if (this._renderData) {
                 this.markForUpdateRenderData(true);
             }
             this._fillType = value;
@@ -258,10 +232,10 @@ export default class SpriteComponent extends RenderComponent {
      * sprite.fillCenter = new cc.v2(0, 0);
      */
     @property
-    get fillCenter() {
+    get fillCenter () {
         return this._fillCenter;
     }
-    set fillCenter(value: Vec2) {
+    set fillCenter (value: Vec2) {
         this._fillCenter.x = value.x;
         this._fillCenter.y = value.y;
         if (this._type === SpriteType.FILLED && this._renderData) {
@@ -281,11 +255,11 @@ export default class SpriteComponent extends RenderComponent {
      * sprite.fillStart = 0.5;
      */
     @property
-    get fillStart() {
+    get fillStart () {
         return this._fillStart;
     }
 
-    set fillStart(value: number) {
+    set fillStart (value: number) {
         this._fillStart = clampf(value, -1, 1);
         if (this._type === SpriteType.FILLED && this._renderData) {
             this.markForUpdateRenderData(true);
@@ -304,10 +278,10 @@ export default class SpriteComponent extends RenderComponent {
      * sprite.fillRange = 1;
      */
     @property
-    get fillRange() {
+    get fillRange () {
         return this._fillRange;
     }
-    set fillRange(value: number) {
+    set fillRange (value: number) {
         // ??? -1 ~ 1
         // this._fillRange = cc.misc.clampf(value, -1, 1);
         this._fillRange = clampf(value, 0, 1);
@@ -323,12 +297,12 @@ export default class SpriteComponent extends RenderComponent {
      * @example
      * sprite.trim = true;
      */
-    get trim() {
+    get trim () {
         // return this._isTrimmedMode;
         return false;
     }
 
-    set trim(value: boolean) {
+    set trim (value: boolean) {
         // if (this._isTrimmedMode !== value) {
         //     this._isTrimmedMode = value;
         //     if ((this._type === SpriteType.SIMPLE || this._type === SpriteType.MESH) &&
@@ -340,7 +314,6 @@ export default class SpriteComponent extends RenderComponent {
             this.node.setContentSize(this._spriteFrame.getOriginalSize());
         }
     }
-
 
     // /**
     //  * !#en specify the size tracing mode.
@@ -360,8 +333,29 @@ export default class SpriteComponent extends RenderComponent {
     //     // }
     // }
 
-    static FillType = FillType;
-    static Type = SpriteType;
+    public static FillType = FillType;
+    public static Type = SpriteType;
+    @property
+    public _spriteFrame: SpriteFrame | null = null;
+    @property
+    public _type: number = SpriteType.SIMPLE;
+    @property
+    public _fillType: number = FillType.HORIZONTAL;
+    // @property
+    // _sizeMode = SizeMode.TRIMMED;
+    @property
+    public _fillCenter: Vec2 = cc.v2(0, 0);
+    @property
+    public _fillStart: number = 0;
+    @property
+    public _fillRange: number = 0;
+    // @property
+    // _isTrimmedMode = true;
+    // _state = 0;
+    // TODO:
+    @property
+    public _atlas: atlas | null = null;
+    public _assembler = null;
     // static SizeMode = SizeMode;
     // static State = State;
 
@@ -383,7 +377,7 @@ export default class SpriteComponent extends RenderComponent {
 
     // onLoad() {}
 
-    onEnable() {
+    public onEnable () {
         super.onEnable();
         if (this._spriteFrame) {
             if (!this._spriteFrame.textureLoaded()) {
@@ -399,7 +393,7 @@ export default class SpriteComponent extends RenderComponent {
         this.node.on(cc.Node.EventType.ANCHOR_CHANGED, this._onNodeSizeDirty, this);
     }
 
-    updateRenderData(buffer: MeshBuffer) {
+    public updateRenderData (buffer: MeshBuffer) {
         if (!this._spriteFrame || !this.material) {
             return;
         }
@@ -408,12 +402,12 @@ export default class SpriteComponent extends RenderComponent {
         this._assembler.fillBuffers(this, buffer);
     }
 
-    onDestroy() {
+    public onDestroy () {
         super.onDestroy();
         this.destroyRenderData();
     }
 
-    onDisable() {
+    public onDisable () {
         // this._super();
         super.onDisable();
 
@@ -421,13 +415,13 @@ export default class SpriteComponent extends RenderComponent {
         this.node.off(cc.NodeUI.EventType.ANCHOR_CHANGED, this._onNodeSizeDirty, this);
     }
 
-    _onNodeSizeDirty() {
-        if (!this._renderData) return;
+    public _onNodeSizeDirty () {
+        if (!this._renderData) { return; }
         this.markForUpdateRenderData(true);
     }
 
-    _updateAssembler() {
-        let assembler = SpriteComponent._assembler.getAssembler(this);
+    public _updateAssembler () {
+        const assembler = SpriteComponent._assembler.getAssembler(this);
 
         if (this._assembler !== assembler) {
             this.destroyRenderData();
@@ -441,8 +435,8 @@ export default class SpriteComponent extends RenderComponent {
         }
     }
 
-    _activateMaterial() {
-        let spriteFrame = this._spriteFrame;
+    public _activateMaterial () {
+        const spriteFrame = this._spriteFrame;
         let material = this.material;
         // WebGL
         if (cc.game.renderType !== cc.game.RENDER_TYPE_CANVAS) {
@@ -455,7 +449,7 @@ export default class SpriteComponent extends RenderComponent {
                 }
             } else {
                 if (spriteFrame && spriteFrame.textureLoaded()) {
-                    let matTexture = material.effect && material.effect.getProperty('mainTexture');
+                    const matTexture = material.effect && material.effect.getProperty('mainTexture');
                     if (matTexture !== spriteFrame) {
                         material.setProperty('mainTexture', spriteFrame);
                         this.markForUpdateRenderData(true);
@@ -464,22 +458,21 @@ export default class SpriteComponent extends RenderComponent {
             }
 
             if (this._renderData) {
-                this._renderData.material = material;;
+                this._renderData.material = material;
             }
-        }
-        else {
+        } else {
             this.markForUpdateRenderData(true);
             // this.markForRender(true);
         }
     }
 
-    _applyAtlas(spriteFrame: SpriteFrame | null) {
+    public _applyAtlas (spriteFrame: SpriteFrame | null) {
         if (!CC_EDITOR) {
             return;
         }
         // Set atlas
         if (spriteFrame && spriteFrame._atlasUuid) {
-            var self = this;
+            const self = this;
             cc.AssetLibrary.loadAsset(spriteFrame._atlasUuid, function (err, asset) {
                 self._atlas = asset;
             });
@@ -488,26 +481,25 @@ export default class SpriteComponent extends RenderComponent {
         }
     }
 
-    _canRender() {
+    public _canRender () {
         if (cc.game.renderType === cc.game.RENDER_TYPE_CANVAS) {
-            if (!this._enabled) return false;
-        }
-        else {
-            if (!this._enabled || !this.material) return false;
+            if (!this._enabled) { return false; }
+        } else {
+            if (!this._enabled || !this.material) { return false; }
         }
 
-        let spriteFrame = this._spriteFrame;
+        const spriteFrame = this._spriteFrame;
         if (!spriteFrame || !spriteFrame.textureLoaded()) {
             return false;
         }
         return true;
     }
 
-    markForUpdateRenderData(enable: boolean) {
+    public markForUpdateRenderData (enable: boolean) {
         if (enable /*&& this._canRender()*/) {
             // this.node._renderFlag |= RenderFlow.FLAG_UPDATE_RENDER_DATA;
 
-            let renderData = this._renderData;
+            const renderData = this._renderData;
             if (renderData) {
                 renderData.uvDirty = true;
                 renderData.vertDirty = true;
@@ -540,12 +532,12 @@ export default class SpriteComponent extends RenderComponent {
     //     this._applySpriteSize();
     // }
 
-    _applySpriteFrame(oldFrame: SpriteFrame | null) {
+    public _applySpriteFrame (oldFrame: SpriteFrame | null) {
         // if (oldFrame && oldFrame.off) {
         //     oldFrame.off('load', this._onTextureLoaded, this);
         // }
 
-        var spriteFrame = this._spriteFrame;
+        const spriteFrame = this._spriteFrame;
         // if (!spriteFrame || (this._material && this._material._texture) !== (spriteFrame && spriteFrame._texture)) {
         //     // disable render flow until texture is loaded
         //     this.markForRender(false);
@@ -557,8 +549,7 @@ export default class SpriteComponent extends RenderComponent {
                 if (spriteFrame.textureLoaded()) {
                     // this._onTextureLoaded();
                     this._activateMaterial();
-                }
-                else {
+                } else {
                     // spriteFrame.once('load', this._onTextureLoaded, this);
                     spriteFrame.ensureLoadTexture();
                 }

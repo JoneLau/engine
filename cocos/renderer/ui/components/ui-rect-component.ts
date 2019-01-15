@@ -1,17 +1,17 @@
-import { Node } from '../../../scene-graph/index'
 import Component from '../../../components/component';
-import { ccclass, property, executeInEditMode, menu, executionOrder } from '../../../core/data/class-decorator';
-import * as math from '../../../core/vmath/index';
-import Vec2 from '../../../core/value-types/vec2';
-import Size from '../../../core/value-types/size';
+import { ccclass, executeInEditMode, executionOrder, menu, property } from '../../../core/data/class-decorator';
 import Event from '../../../core/platform/event-manager/CCEvent.js';
+import Size from '../../../core/value-types/size';
+import Vec2 from '../../../core/value-types/vec2';
+import * as math from '../../../core/vmath/index';
+import { Node } from '../../../scene-graph/index';
 
-let _vec2a = cc.v2();
-let _vec2b = cc.v2();
-let _mat4_temp = cc.mat4();
-let _worldMatrix = cc.mat4();
+const _vec2a = cc.v2();
+const _vec2b = cc.v2();
+const _mat4_temp = cc.mat4();
+const _worldMatrix = cc.mat4();
 
-let EventType = cc.Enum({
+const EventType = cc.Enum({
     /**
     * !#en The event type for size change events.
     * Performance note, this event will be triggered every time corresponding properties being changed,
@@ -38,85 +38,92 @@ let EventType = cc.Enum({
 @executionOrder(100)
 @menu('UI/Rect')
 export default class UIRectComponent extends Component {
-    @property
-    _contentSize = new cc.Size(100, 100);
-    @property
-    _anchorPoint = cc.v2(0.5, 0.5);
 
     @property
-    get contentSize() {
+    get contentSize () {
         return this._contentSize;
     }
 
-    set contentSize(value) {
+    set contentSize (value) {
         if (this._contentSize === value) {
             return;
         }
 
         this._contentSize = value;
-        this.emit()
+        this.node.emit(EventType.SIZE_CHANGED);
     }
 
-    get width() {
+    get width () {
         return this._contentSize.width;
     }
 
-    set width(value) {
+    set width (value) {
         if (this._contentSize.width === value) {
             return;
         }
 
         this._contentSize.width = value;
+        this.node.emit(EventType.SIZE_CHANGED);
     }
 
-    get height() {
+    get height () {
         return this._contentSize.height;
     }
 
-    set height(value) {
+    set height (value) {
         if (this._contentSize.height === value) {
             return;
         }
 
         this._contentSize.height = value;
+        this.node.emit(EventType.SIZE_CHANGED);
     }
 
     @property
-    get anchorPoint() {
+    get anchorPoint () {
         return this._anchorPoint;
     }
 
-    set anchorPoint(value) {
+    set anchorPoint (value) {
         if (this._anchorPoint === value) {
             return;
         }
 
         this._anchorPoint = value;
+        this.node.emit(EventType.ANCHOR_CHANGED);
     }
 
-    get anchorX() {
+    get anchorX () {
         return this._anchorPoint.x;
     }
 
-    set anchorX(value) {
+    set anchorX (value) {
         if (this._anchorPoint.x === value) {
             return;
         }
 
         this._anchorPoint.x = value;
+        this.node.emit(EventType.ANCHOR_CHANGED);
     }
 
-    get anchorY() {
+    get anchorY () {
         return this._anchorPoint.y;
     }
 
-    set anchorY(value) {
+    set anchorY (value) {
         if (this._anchorPoint.y === value) {
             return;
         }
 
         this._anchorPoint.y = value;
+        this.node.emit(EventType.ANCHOR_CHANGED);
     }
+
+    public static EventType = EventType;
+    @property
+    public _contentSize = new cc.Size(100, 100);
+    @property
+    public _anchorPoint = cc.v2(0.5, 0.5);
 
     /**
     * !#en
@@ -131,20 +138,22 @@ export default class UIRectComponent extends Component {
     * node.setContentSize(cc.size(100, 100));
     * node.setContentSize(100, 100);
     */
-    setContentSize(size: Size, height: number) {
-        var locContentSize = this._contentSize;
+    public setContentSize (size: Size, height: number) {
+        const locContentSize = this._contentSize;
         // var clone;
         if (height === undefined) {
-            if ((size.width === locContentSize.width) && (size.height === locContentSize.height))
+            if ((size.width === locContentSize.width) && (size.height === locContentSize.height)) {
                 return;
+            }
             // if (CC_EDITOR) {
             //     clone = cc.size(locContentSize.width, locContentSize.height);
             // }
             locContentSize.width = size.width;
             locContentSize.height = size.height;
         } else {
-            if ((size === locContentSize.width) && (height === locContentSize.height))
+            if ((size === locContentSize.width) && (height === locContentSize.height)) {
                 return;
+            }
             // if (CC_EDITOR) {
             //     clone = cc.size(locContentSize.width, locContentSize.height);
             // }
@@ -181,16 +190,18 @@ export default class UIRectComponent extends Component {
      * node.setAnchorPoint(cc.v2(1, 1));
      * node.setAnchorPoint(1, 1);
      */
-    setAnchorPoint(point: Vec2, y: number) {
-        var locAnchorPoint = this._anchorPoint;
+    public setAnchorPoint (point: Vec2, y: number) {
+        const locAnchorPoint = this._anchorPoint;
         if (y === undefined) {
-            if ((point.x === locAnchorPoint.x) && (point.y === locAnchorPoint.y))
+            if ((point.x === locAnchorPoint.x) && (point.y === locAnchorPoint.y)) {
                 return;
+            }
             locAnchorPoint.x = point.x;
             locAnchorPoint.y = point.y;
         } else {
-            if ((point === locAnchorPoint.x) && (y === locAnchorPoint.y))
+            if ((point === locAnchorPoint.x) && (y === locAnchorPoint.y)) {
                 return;
+            }
             locAnchorPoint.x = point;
             locAnchorPoint.y = y;
         }
@@ -200,27 +211,27 @@ export default class UIRectComponent extends Component {
         // }
     }
 
-    isHit(point: Vec2, listener: Event) {
-        let w = this._contentSize.width,
+    public isHit (point: Vec2, listener: Event) {
+        const w = this._contentSize.width,
             h = this._contentSize.height,
             cameraPt = _vec2a,
             testPt = _vec2b;
 
-        let renderComp = this.node.getComponent(cc.RenderComponent);
+        const renderComp = this.node.getComponent(cc.RenderComponent);
         if (!renderComp) {
             return false;
         }
-        let canvas = cc.CanvasComponent.findView(renderComp);
+        const canvas = cc.CanvasComponent.findView(renderComp);
         if (!canvas) {
             return;
         }
 
         canvas.node.getWorldRT(_mat4_temp);
 
-        let m12 = _mat4_temp.m12;
-        let m13 = _mat4_temp.m13;
+        const m12 = _mat4_temp.m12;
+        const m13 = _mat4_temp.m13;
 
-        let center = cc.visibleRect.center;
+        const center = cc.visibleRect.center;
         // let size = cc.view.getFrameSize();
         // let center = cc.v2(size.width / 2, size.height / 2);
         // let center = cc.v2(cc.game._renderer._device._gl.canvas.width / 2, cc.game._renderer._device._gl.canvas.height / 2);
@@ -248,24 +259,20 @@ export default class UIRectComponent extends Component {
 
         if (testPt.x >= 0 && testPt.y >= 0 && testPt.x <= w && testPt.y <= h) {
             if (listener && listener.mask) {
-                var mask = listener.mask;
-                var parent = this;
+                const mask = listener.mask;
+                const parent = this;
                 // find mask parent, should hit test it
                 if (parent === mask.node) {
-                    var comp = parent.getComponent(cc.Mask);
+                    const comp = parent.getComponent(cc.Mask);
                     return (comp && comp.enabledInHierarchy) ? comp._hitTest(cameraPt) : true;
-                }
-                // mask parent no longer exists
-                else {
+                } else {
                     listener.mask = null;
                     return true;
                 }
-            }
-            else {
+            } else {
                 return true;
             }
-        }
-        else {
+        } else {
             return false;
         }
     }
