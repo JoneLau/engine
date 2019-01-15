@@ -24,8 +24,9 @@
  THE SOFTWARE.
  ****************************************************************************/
 
-import { ValueType } from './value-type';
 import CCClass from '../data/class';
+import { color4 } from '../vmath';
+import { ValueType } from './value-type';
 
 /**
  * !#en
@@ -46,14 +47,22 @@ import CCClass from '../data/class';
  * @extends ValueType
  */
 export default class Color extends ValueType {
+    private _val: number;
+
     /**
-     * @method constructor
-     * @param {Number} [r=0] - red component of the color, default value is 0.
-     * @param {Number} [g=0] - green component of the color, defualt value is 0.
-     * @param {Number} [b=0] - blue component of the color, default value is 0.
-     * @param {Number} [a=255] - alpha component of the color, default value is 255.
+     * @param other
      */
-    constructor ( r, g, b, a ) {
+    constructor (other: Color);
+
+    /**
+     * @param [r=0] - red component of the color, default value is 0.
+     * @param [g=0] - green component of the color, defualt value is 0.
+     * @param [b=0] - blue component of the color, default value is 0.
+     * @param [a=255] - alpha component of the color, default value is 255.
+     */
+    constructor (r?: number, g?: number, b?: number, a?: number);
+
+    constructor (r?: number | Color, g?: number, b?: number, a?: number) {
         super();
         if (typeof r === 'object') {
             g = r.g;
@@ -65,16 +74,13 @@ export default class Color extends ValueType {
         g = g || 0;
         b = b || 0;
         a = typeof a === 'number' ? a : 255;
-        this._val = ((a<<24) >>> 0) + (b<<16) + (g<<8) + r;
+        this._val = ((a << 24) >>> 0) + (b << 16) + (g << 8) + r;
     }
 
     // color: [r, g, b, a]
     /**
      * !#en Solid white, RGBA is [255, 255, 255, 255].
      * !#zh 纯白色，RGBA 是 [255, 255, 255, 255]。
-     * @property WHITE
-     * @type {Color}
-     * @static
      */
     static get WHITE () {
         return new Color(255, 255, 255, 255);
@@ -83,9 +89,6 @@ export default class Color extends ValueType {
     /**
      * !#en Solid black, RGBA is [0, 0, 0, 255].
      * !#zh 纯黑色，RGBA 是 [0, 0, 0, 255]。
-     * @property BLACK
-     * @type {Color}
-     * @static
      */
     static get BLACK () {
         return new Color(0, 0, 0, 255);
@@ -94,18 +97,14 @@ export default class Color extends ValueType {
     /**
      * !#en Transparent, RGBA is [0, 0, 0, 0].
      * !#zh 透明，RGBA 是 [0, 0, 0, 0]。
-     * @property TRANSPARENT
-     * @type {Color}
-     * @static
      */
     static get TRANSPARENT () {
-         return new Color(0, 0, 0, 0);     }
+         return new Color(0, 0, 0, 0);
+    }
+
     /**
      * !#en Grey, RGBA is [127.5, 127.5, 127.5].
      * !#zh 灰色，RGBA 是 [127.5, 127.5, 127.5]。
-     * @property GRAY
-     * @type {Color}
-     * @static
      */
     static get GRAY () {
         return new Color(127.5, 127.5, 127.5, 255);
@@ -114,9 +113,6 @@ export default class Color extends ValueType {
     /**
      * !#en Solid red, RGBA is [255, 0, 0].
      * !#zh 纯红色，RGBA 是 [255, 0, 0]。
-     * @property RED
-     * @type {Color}
-     * @static
      */
     static get RED () {
         return new Color(255, 0, 0, 255);
@@ -125,9 +121,6 @@ export default class Color extends ValueType {
     /**
      * !#en Solid green, RGBA is [0, 255, 0].
      * !#zh 纯绿色，RGBA 是 [0, 255, 0]。
-     * @property GREEN
-     * @type {Color}
-     * @static
      */
     static get GREEN () {
         return new Color(0, 255, 0, 255);
@@ -136,9 +129,6 @@ export default class Color extends ValueType {
     /**
      * !#en Solid blue, RGBA is [0, 0, 255].
      * !#zh 纯蓝色，RGBA 是 [0, 0, 255]。
-     * @property BLUE
-     * @type {Color}
-     * @static
      */
     static get BLUE () {
         return new Color(0, 0, 255, 255);
@@ -147,9 +137,6 @@ export default class Color extends ValueType {
     /**
      * !#en Yellow, RGBA is [255, 235, 4].
      * !#zh 黄色，RGBA 是 [255, 235, 4]。
-     * @property YELLOW
-     * @type {Color}
-     * @static
      */
     static get YELLOW () {
         return new Color(255, 235, 4, 255);
@@ -158,9 +145,6 @@ export default class Color extends ValueType {
     /**
      * !#en Orange, RGBA is [255, 127, 0].
      * !#zh 橙色，RGBA 是 [255, 127, 0]。
-     * @property ORANGE
-     * @type {Color}
-     * @static
      */
     static get ORANGE () {
         return new Color(255, 127, 0, 255);
@@ -169,9 +153,6 @@ export default class Color extends ValueType {
     /**
      * !#en Cyan, RGBA is [0, 255, 255].
      * !#zh 青色，RGBA 是 [0, 255, 255]。
-     * @property CYAN
-     * @type {Color}
-     * @static
      */
     static get CYAN () {
         return new Color(0, 255, 255, 255);
@@ -180,9 +161,6 @@ export default class Color extends ValueType {
     /**
      * !#en Magenta, RGBA is [255, 0, 255].
      * !#zh 洋红色（品红色），RGBA 是 [255, 0, 255]。
-     * @property MAGENTA
-     * @type {Color}
-     * @static
      */
     static get MAGENTA () {
         return new Color(255, 0, 255, 255);
@@ -191,7 +169,6 @@ export default class Color extends ValueType {
     /**
      * !#en red channel value
      * !#zh 红色通道值
-     * @property r
      */
     get r () {
         return this._val & 0x000000ff;
@@ -199,13 +176,11 @@ export default class Color extends ValueType {
     set r (red) {
         red = ~~cc.misc.clampf(red, 0, 255);
         this._val = ((this._val & 0xffffff00) | red) >>> 0;
-        return this;
     }
 
     /**
      * !#en green channel value
      * !#zh 绿色通道值
-     * @property g
      */
     get g () {
         return (this._val & 0x0000ff00) >> 8;
@@ -213,13 +188,11 @@ export default class Color extends ValueType {
     set g (green) {
         green = ~~cc.misc.clampf(green, 0, 255);
         this._val = ((this._val & 0xffff00ff) | (green << 8)) >>> 0;
-        return this;
     }
 
     /**
      * !#en blue channel value
      * !#zh 蓝色通道值
-     * @property b
      */
     get b () {
         return (this._val & 0x00ff0000) >> 16;
@@ -227,13 +200,11 @@ export default class Color extends ValueType {
     set b (blue) {
         blue = ~~cc.misc.clampf(blue, 0, 255);
         this._val = ((this._val & 0xff00ffff) | (blue << 16)) >>> 0;
-        return this;
     }
 
     /**
      * !#en alpha channel value
      * !#zh 透明度通道值
-     * @property a
      */
     get a () {
         return (this._val & 0xff000000) >>> 24;
@@ -241,20 +212,19 @@ export default class Color extends ValueType {
     set a (alpha) {
         alpha = ~~cc.misc.clampf(alpha, 0, 255);
         this._val = ((this._val & 0x00ffffff) | ((alpha << 24) >>> 0)) >>> 0;
-        return this;
     }
 
     /**
      * !#en Clone a new color from the current color.
      * !#zh 克隆当前颜色。
-     * @method clone
-     * @return {Color} Newly created color.
+     *
+     * @return Newly created color.
      * @example
      * var color = new cc.Color();
      * var newColor = color.clone();// Color {r: 0, g: 0, b: 0, a: 255}
      */
-    clone () {
-        var ret = new Color();
+    public clone () {
+        const ret = new Color();
         ret._val = this._val;
         return ret;
     }
@@ -262,9 +232,9 @@ export default class Color extends ValueType {
     /**
      * !#en TODO
      * !#zh 判断两个颜色是否相等。
-     * @method equals
-     * @param {Color} other
-     * @return {Boolean}
+     *
+     * @param other
+     * @return
      * @example
      * var color1 = cc.Color.WHITE;
      * var color2 = new cc.Color(255, 255, 255);
@@ -272,26 +242,26 @@ export default class Color extends ValueType {
      * color2 = cc.Color.RED;
      * cc.log(color2.equals(color1)); // false;
      */
-    equals (other) {
+    public equals (other: Color) {
         return other && this._val === other._val;
     }
 
     /**
      * !#en TODO
      * !#zh 线性插值
-     * @method lerp
-     * @param {Color} to
-     * @param {number} ratio - the interpolation coefficient.
-     * @param {Color} [out] - optional, the receiving vector.
-     * @return {Color}
+     *
+     * @param to
+     * @param ratio - the interpolation coefficient.
+     * @param [out] - optional, the receiving vector.
+     * @return
      * @example {@link utils/api/engine/docs/cocos2d/core/value-types/CCColor/lerp.js}
      */
-    lerp (to, ratio, out) {
+    public lerp (to: Color, ratio: number, out?: Color) {
         out = out || new Color();
-        var r = this.r;
-        var g = this.g;
-        var b = this.b;
-        var a = this.a;
+        const r = this.r;
+        const g = this.g;
+        const b = this.b;
+        const a = this.a;
         out.r = r + (to.r - r) * ratio;
         out.g = g + (to.g - g) * ratio;
         out.b = b + (to.b - b) * ratio;
@@ -302,67 +272,66 @@ export default class Color extends ValueType {
     /**
      * !#en TODO
      * !#zh 转换为方便阅读的字符串。
-     * @method toString
-     * @return {String}
+     *
+     * @return
      * @example
      * var color = cc.Color.WHITE;
      * color.toString(); // "rgba(255, 255, 255, 255)"
      */
-    toString () {
-        return "rgba(" +
-            this.r.toFixed() + ", " +
-            this.g.toFixed() + ", " +
-            this.b.toFixed() + ", " +
-            this.a.toFixed() + ")";
+    public toString () {
+        return 'rgba(' +
+            this.r.toFixed() + ', ' +
+            this.g.toFixed() + ', ' +
+            this.b.toFixed() + ', ' +
+            this.a.toFixed() + ')';
     }
 
     /**
      * !#en Convert color to css format.
      * !#zh 转换为 CSS 格式。
-     * @method toCSS
-     * @param {String} opt - "rgba", "rgb", "#rgb" or "#rrggbb".
-     * @return {String}
+     *
+     * @param opt - "rgba", "rgb", "#rgb" or "#rrggbb".
+     * @return
      * @example {@link utils/api/engine/docs/cocos2d/core/value-types/CCColor/toCSS.js}
      */
-    toCSS ( opt ) {
+    public toCSS (opt: 'rgba' | 'rgb' | '#rgb' | '#rrggbb') {
         if ( opt === 'rgba' ) {
-            return "rgba(" +
-                (this.r | 0 ) + "," +
-                (this.g | 0 ) + "," +
-                (this.b | 0 ) + "," +
-                (this.a / 255).toFixed(2) + ")"
+            return 'rgba(' +
+                (this.r | 0 ) + ',' +
+                (this.g | 0 ) + ',' +
+                (this.b | 0 ) + ',' +
+                (this.a / 255).toFixed(2) + ')'
             ;
-        }
-        else if ( opt === 'rgb' ) {
-            return "rgb(" +
-                (this.r | 0 ) + "," +
-                (this.g | 0 ) + "," +
-                (this.b | 0 ) + ")"
+        } else if ( opt === 'rgb' ) {
+            return 'rgb(' +
+                (this.r | 0 ) + ',' +
+                (this.g | 0 ) + ',' +
+                (this.b | 0 ) + ')'
             ;
-        }
-        else {
+        } else {
             return '#' + this.toHEX(opt);
         }
     }
 
     /**
-     * !#en Read hex string and store color data into the current color object, the hex string must be formated as rgba or rgb.
+     * !#en Read hex string and store color data into the current color object,
+     * the hex string must be formated as rgba or rgb.
      * !#zh 读取 16 进制颜色。
-     * @method fromHEX
-     * @param {String} hexString
-     * @return {Color}
+     *
+     * @param hexString
+     * @return
      * @chainable
      * @example
      * var color = cc.Color.BLACK;
      * color.fromHEX("#FFFF33"); // Color {r: 255, g: 255, b: 51, a: 255};
      */
-    fromHEX (hexString) {
+    public fromHEX (hexString: string) {
         hexString = (hexString.indexOf('#') === 0) ? hexString.substring(1) : hexString;
-        let r = parseInt(hexString.substr(0, 2), 16) || 0;
-        let g = parseInt(hexString.substr(2, 2), 16) || 0;
-        let b = parseInt(hexString.substr(4, 2), 16) || 0;
-        let a = parseInt(hexString.substr(6, 2), 16) || 255;
-        this._val = ((a<<24) >>> 0) + (b<<16) + (g<<8) + r;
+        const r = parseInt(hexString.substr(0, 2), 16) || 0;
+        const g = parseInt(hexString.substr(2, 2), 16) || 0;
+        const b = parseInt(hexString.substr(4, 2), 16) || 0;
+        const a = parseInt(hexString.substr(6, 2), 16) || 255;
+        this._val = ((a << 24) >>> 0) + (b << 16) + (g << 8) + r;
         return this;
     }
 
@@ -370,36 +339,34 @@ export default class Color extends ValueType {
      * !#en convert Color to HEX color string.
      * e.g.  cc.color(255,6,255)  to : "#ff06ff"
      * !#zh 转换为 16 进制。
-     * @method toHEX
-     * @param {String} fmt - "#rgb", "#rrggbb" or "#rrggbbaa".
-     * @return {String}
+     *
+     * @param fmt - "#rgb", "#rrggbb" or "#rrggbbaa".
+     * @return
      * @example
      * var color = cc.Color.BLACK;
      * color.toHEX("#rgb");     // "000";
      * color.toHEX("#rrggbb");  // "000000";
      */
-    toHEX ( fmt ) {
-        var hex = [
+    public toHEX (fmt: '#rgb' | '#rrggbb' | '#rrggbbaa') {
+        const hex = [
             (this.r | 0 ).toString(16),
             (this.g | 0 ).toString(16),
-            (this.b | 0 ).toString(16)
+            (this.b | 0 ).toString(16),
         ];
-        var i = -1;
+        let i = -1;
         if ( fmt === '#rgb' ) {
             for ( i = 0; i < hex.length; ++i ) {
                 if ( hex[i].length > 1 ) {
                     hex[i] = hex[i][0];
                 }
             }
-        }
-        else if ( fmt === '#rrggbb' ) {
+        } else if ( fmt === '#rrggbb' ) {
             for ( i = 0; i < hex.length; ++i ) {
                 if ( hex[i].length === 1 ) {
                     hex[i] = '0' + hex[i];
                 }
             }
-        }
-        else if ( fmt === '#rrggbbaa' ) {
+        } else if ( fmt === '#rrggbbaa' ) {
             hex.push((this.a | 0 ).toString(16));
             for ( i = 0; i < hex.length; ++i ) {
                 if ( hex[i].length === 1 ) {
@@ -413,48 +380,48 @@ export default class Color extends ValueType {
     /**
      * !#en Convert to 24bit rgb value.
      * !#zh 转换为 24bit 的 RGB 值。
-     * @method toRGBValue
-     * @return {Number}
+     *
+     * @return
      * @example
      * var color = cc.Color.YELLOW;
      * color.toRGBValue(); // 16771844;
      */
-    toRGBValue () {
+    public toRGBValue () {
         return this._val & 0x00ffffff;
     }
 
     /**
      * !#en Read HSV model color and convert to RGB color
      * !#zh 读取 HSV（色彩模型）格式。
-     * @method fromHSV
-     * @param {Number} h
-     * @param {Number} s
-     * @param {Number} v
-     * @return {Color}
+     *
+     * @param h
+     * @param s
+     * @param v
+     * @return
      * @chainable
      * @example
      * var color = cc.Color.YELLOW;
      * color.fromHSV(0, 0, 1); // Color {r: 255, g: 255, b: 255, a: 255};
      */
-    fromHSV ( h, s, v ) {
-        var r, g, b;
+    public fromHSV (h: number, s: number, v: number) {
+        let r: number = 0;
+        let g: number = 0;
+        let b: number = 0;
         if (s === 0) {
             r = g = b = v;
-        }
-        else {
+        } else {
             if (v === 0) {
                 r = g = b = 0;
-            }
-            else {
-                if (h === 1) h = 0;
+            } else {
+                if (h === 1) { h = 0; }
                 h *= 6;
                 s = s;
                 v = v;
-                var i = Math.floor(h);
-                var f = h - i;
-                var p = v * (1 - s);
-                var q = v * (1 - (s * f));
-                var t = v * (1 - (s * (1 - f)));
+                const i = Math.floor(h);
+                const f = h - i;
+                const p = v * (1 - s);
+                const q = v * (1 - (s * f));
+                const t = v * (1 - (s * (1 - f)));
                 switch (i) {
                     case 0:
                         r = v;
@@ -497,46 +464,48 @@ export default class Color extends ValueType {
         r *= 255;
         g *= 255;
         b *= 255;
-        this._val = ((this.a<<24) >>> 0) + (b<<16) + (g<<8) + r;
+        this._val = ((this.a << 24) >>> 0) + (b << 16) + (g << 8) + r;
         return this;
     }
 
     /**
      * !#en Transform to HSV model color
      * !#zh 转换为 HSV（色彩模型）格式。
-     * @method toHSV
-     * @return {Object} - {h: number, s: number, v: number}.
+     *
+     * @return - {h: number, s: number, v: number}.
      * @example
      * var color = cc.Color.YELLOW;
      * color.toHSV(); // Object {h: 0.1533864541832669, s: 0.9843137254901961, v: 1};
      */
-    toHSV () {
-        var r = this.r / 255;
-        var g = this.g / 255;
-        var b = this.b / 255;
-        var hsv = { h: 0, s: 0, v: 0 };
-        var max = Math.max(r,g,b);
-        var min = Math.min(r,g,b);
-        var delta = 0;
+    public toHSV () {
+        const r = this.r / 255;
+        const g = this.g / 255;
+        const b = this.b / 255;
+        const hsv = { h: 0, s: 0, v: 0 };
+        const max = Math.max(r, g, b);
+        const min = Math.min(r, g, b);
+        let delta = 0;
         hsv.v = max;
         hsv.s = max ? (max - min) / max : 0;
-        if (!hsv.s) hsv.h = 0;
-        else {
+        if (!hsv.s) { hsv.h = 0; } else {
             delta = max - min;
-            if (r === max) hsv.h = (g - b) / delta;
-            else if (g === max) hsv.h = 2 + (b - r) / delta;
-            else hsv.h = 4 + (r - g) / delta;
+            if (r === max) {
+                hsv.h = (g - b) / delta;
+            } else if (g === max) {
+                hsv.h = 2 + (b - r) / delta;
+            } else {
+                hsv.h = 4 + (r - g) / delta;
+            }
             hsv.h /= 6;
-            if (hsv.h < 0) hsv.h += 1.0;
+            if (hsv.h < 0) { hsv.h += 1.0; }
         }
         return hsv;
     }
 
-    set (color) {
+    public set (color: Color) {
         if (color._val) {
             this._val = color._val;
-        }
-        else {
+        } else {
             this.r = color.r;
             this.g = color.g;
             this.b = color.b;
@@ -544,8 +513,8 @@ export default class Color extends ValueType {
         }
     }
 
-    to01(out) {
-      out = out || cc.vmath.color4.create();
+    public to01 (out?: color4) {
+      out = out || color4.create();
       out.r = this.r / 255;
       out.g = this.g / 255;
       out.b = this.b / 255;
@@ -557,8 +526,20 @@ export default class Color extends ValueType {
 CCClass.fastDefine('cc.Color', Color, {r: 0, g: 0, b: 0, a: 255});
 
 /**
- * @module cc
+ * !#en
+ * The convenience method to create a new {{#crossLink "Color/Color:method"}}cc.Color{{/crossLink}}
+ * Alpha channel is optional. Default value is 255.
+ *
+ * !#zh
+ * 通过该方法来创建一个新的 {{#crossLink "Color/Color:method"}}cc.Color{{/crossLink}} 对象。
+ * Alpha 通道是可选的。默认值是 255。
+ *
+ *
+ * @param other
+ * @return
+ * @example {@link utils/api/engine/docs/cocos2d/core/value-types/CCColor/color.js}
  */
+function color (other: Color | string): Color;
 
 /**
  * !#en
@@ -569,23 +550,29 @@ CCClass.fastDefine('cc.Color', Color, {r: 0, g: 0, b: 0, a: 255});
  * 通过该方法来创建一个新的 {{#crossLink "Color/Color:method"}}cc.Color{{/crossLink}} 对象。
  * Alpha 通道是可选的。默认值是 255。
  *
- * @method color
- * @param {number|string|object} [r=0]
- * @param {number} [g=0]
- * @param {number} [b=0]
- * @param {number} [a=255]
- * @return {Color}
+ *
+ * @param [r=0]
+ * @param [g=0]
+ * @param [b=0]
+ * @param [a=255]
+ * @return
  * @example {@link utils/api/engine/docs/cocos2d/core/value-types/CCColor/color.js}
  */
-cc.color = function color (r, g, b, a) {
+function color (r?: number, g?: number, b?: number, a?: number): Color;
+
+function color (r?: number | Color | string, g?: number, b?: number, a?: number) {
     if (typeof r === 'string') {
-        var result = new Color();
+        const result = new Color();
         return result.fromHEX(r);
     }
     if (typeof r === 'object') {
         return new Color(r.r, r.g, r.b, r.a);
     }
     return  new Color(r, g, b, a);
-};
+}
+
+export { color };
+
+cc.color = color;
 
 cc.Color = Color;
