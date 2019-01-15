@@ -137,15 +137,19 @@ export default class Size extends ValueType {
 
 CCClass.fastDefine('cc.Size', Size, { width: 0, height: 0 });
 
+/**
+ * !#en
+ * Helper function that creates a cc.Size.<br/>
+ * Please use cc.p or cc.v2 instead, it will soon replace cc.Size.
+ * !#zh
+ * 创建一个 cc.Size 对象的帮助函数。<br/>
+ * 注意：可以使用 cc.p 或者是 cc.v2 代替，它们将很快取代 cc.Size。
+ *
+ * @param size
+ * @return
+ * @example {@link utils/api/engine/docs/cocos2d/core/value-types/CCSize/size.js}
+ */
 function size (size: Size): Size;
-
-function size (width?: number, height?: number): Size;
-
-function size (width: Size | number = 0, height: number = 0) {
-    return new Size(width as any, height);
-}
-
-export { size };
 
 /**
  * !#en
@@ -154,12 +158,20 @@ export { size };
  * !#zh
  * 创建一个 cc.Size 对象的帮助函数。<br/>
  * 注意：可以使用 cc.p 或者是 cc.v2 代替，它们将很快取代 cc.Size。
- * @method size
- * @param {Number|Size} w - width or a size object
- * @param {Number} [h] - height
- * @return {Size}
+ *
+ * @param [w] - width
+ * @param [h] - height
+ * @return
  * @example {@link utils/api/engine/docs/cocos2d/core/value-types/CCSize/size.js}
  */
+function size (width?: number, height?: number): Size;
+
+function size (width: Size | number = 0, height: number = 0) {
+    return new Size(width as any, height);
+}
+
+export { size };
+
 cc.size = size;
 
 cc.Size = Size;

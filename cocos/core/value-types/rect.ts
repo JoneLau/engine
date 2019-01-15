@@ -112,13 +112,13 @@ export default class Rect extends ValueType {
     /**
      * !#en Creates a rectangle from two coordinate values.
      * !#zh 根据指定 2 个坐标创建出一个矩形区域。
-     * @param {Vec2} v1
-     * @param {Vec2} v2
-     * @return {Rect}
+     * @param v1
+     * @param v2
+     * @return
      * @example
      * cc.Rect.fromMinMax(cc.v2(10, 10), cc.v2(20, 20)); // Rect {x: 10, y: 10, width: 10, height: 10};
      */
-    public static fromMinMax (v1, v2) {
+    public static fromMinMax (v1: Vec2, v2: Vec2) {
         const min_x = Math.min(v1.x, v2.x);
         const min_y = Math.min(v1.y, v2.y);
         const max_x = Math.max(v1.x, v2.x);
@@ -197,7 +197,7 @@ export default class Rect extends ValueType {
     /**
      * !#en TODO
      * !#zh 线性插值
-     * @method lerp
+     *
      * @param to
      * @param ratio - the interpolation coefficient.
      * @param out - optional, the receiving vector.
@@ -234,7 +234,7 @@ export default class Rect extends ValueType {
     /**
      * !#en Check whether the current rectangle intersects with the given one
      * !#zh 当前矩形与指定矩形是否相交。
-     * @method intersects
+     *
      * @param other
      * @return
      * @example
@@ -253,7 +253,7 @@ export default class Rect extends ValueType {
     /**
      * !#en Returns the overlapping portion of 2 rectangles.
      * !#zh 返回 2 个矩形重叠的部分。
-     * @method intersection
+     *
      * @param out Stores the result
      * @param rectB
      * @return Returns the out parameter
