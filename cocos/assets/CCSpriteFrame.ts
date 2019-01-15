@@ -25,19 +25,37 @@
  THE SOFTWARE.
  ****************************************************************************/
 
-import EventTarget from '../core/event/event-target';
-import textureUtil from './texture-util';
-import {addon} from '../core/utils/js';
-import { Asset } from './asset';
 import {ccclass, property} from '../core/data/class-decorator';
-
+import EventTarget from '../core/event/event-target';
+import {addon} from '../core/utils/js';
+import Rect, { rect } from '../core/value-types/rect';
+import Size, { size } from '../core/value-types/size';
+import Vec2 from '../core/value-types/vec2';
+import { Asset } from './asset';
+import Texture2D from './texture-2d';
+import textureUtil from './texture-util';
 
 const INSET_LEFT = 0;
 const INSET_TOP = 1;
 const INSET_RIGHT = 2;
 const INSET_BOTTOM = 3;
 
-let temp_uvs = [{ u: 0, v: 0 }, { u: 0, v: 0 }, { u: 0, v: 0 }, { u: 0, v: 0 }];
+interface IUV {
+    u: number;
+    v: number;
+}
+
+interface IVertices {
+    x: any;
+    y: any;
+    triangles: any;
+    nu: number[];
+    u: number[];
+    nv: number[];
+    v: number[];
+}
+
+const temp_uvs: IUV[] = [{ u: 0, v: 0 }, { u: 0, v: 0 }, { u: 0, v: 0 }, { u: 0, v: 0 }];
 
 /**
  * !#en
@@ -99,10 +117,10 @@ export default class SpriteFrame extends Texture2D {
      * @type {Number}
      * @default 0
      */
-    get insetTop() {
+    get insetTop () {
         return this._capInsets[INSET_TOP];
     }
-    set insetTop(value) {
+    set insetTop (value) {
         this._capInsets[INSET_TOP] = value;
         // if (this._texture) {
         this._calculateSlicedUV();
@@ -116,10 +134,10 @@ export default class SpriteFrame extends Texture2D {
      * @type {Number}
      * @default 0
      */
-    get insetBottom() {
+    get insetBottom () {
         return this._capInsets[INSET_BOTTOM];
     }
-    set insetBottom(value) {
+    set insetBottom (value) {
         this._capInsets[INSET_BOTTOM] = value;
         // if (this._texture) {
         this._calculateSlicedUV();
@@ -133,10 +151,10 @@ export default class SpriteFrame extends Texture2D {
      * @type {Number}
      * @default 0
      */
-    get insetLeft() {
+    get insetLeft () {
         return this._capInsets[INSET_LEFT];
     }
-    set insetLeft(value) {
+    set insetLeft (value) {
         this._capInsets[INSET_LEFT] = value;
         // if (this._texture) {
         this._calculateSlicedUV();
@@ -150,15 +168,39 @@ export default class SpriteFrame extends Texture2D {
      * @type {Number}
      * @default 0
      */
-    get insetRight() {
+    get insetRight () {
         return this._capInsets[INSET_RIGHT];
     }
-    set insetRight(value) {
+    set insetRight (value) {
         this._capInsets[INSET_RIGHT] = value;
         // if (this._texture) {
         this._calculateSlicedUV();
         // }
     }
+
+    public vertices: IVertices | null = null;
+
+    public uv: number[] = [];
+
+    public uvSliced: IUV[] = [];
+
+    // the location of the sprite on rendering texture
+    private _rect = new Rect();
+
+    // for trimming
+    private _offset = null;
+
+    // for trimming
+    private _originalSize = new Size();
+
+    private _rotated = false;
+
+    private _capInsets = [0, 0, 0, 0];
+
+    // store original info before packed to dynamic atlas
+    private _original = null;
+
+    private _atlasUuid?: string;
 
     /**
      * !#en
@@ -172,34 +214,16 @@ export default class SpriteFrame extends Texture2D {
      * @param {Vec2} [offset] - The offset of the frame in the texture
      * @param {Size} [originalSize] - The size of the frame in the texture
      */
-    constructor() {
+    constructor () {
         super();
         // Init EventTarget data
         EventTarget.call(this);
 
         // let filename = arguments[0];
-        let rect = arguments[0];
-        let rotated = arguments[1];
-        let offset = arguments[2];
-        let originalSize = arguments[3];
-
-        // the location of the sprite on rendering texture
-        this._rect = null;
-
-        // for trimming
-        this._offset = null;
-
-        // for trimming
-        this._originalSize = null;
-
-        this._rotated = false;
-
-        this.vertices = null;
-
-        this._capInsets = [0, 0, 0, 0];
-
-        this.uv = [];
-        this.uvSliced = [];
+        const rect = arguments[0];
+        const rotated = arguments[1];
+        const offset = arguments[2];
+        const originalSize = arguments[3];
 
         // this._texture = null;
         // this._textureFilename = '';
@@ -208,9 +232,6 @@ export default class SpriteFrame extends Texture2D {
         this._capInsets[INSET_LEFT] = 0;
         this._capInsets[INSET_RIGHT] = 1;
         this._capInsets[INSET_TOP] = 1;
-
-        // store original info before packed to dynamic atlas
-        this._original = null;
 
         if (CC_EDITOR) {
             // Atlas asset uuid
@@ -226,76 +247,58 @@ export default class SpriteFrame extends Texture2D {
     /**
      * !#en Returns whether the texture have been loaded
      * !#zh 返回是否已加载纹理
-     * @method textureLoaded
-     * @returns {boolean}
      */
-    textureLoaded() {
+    public textureLoaded () {
         return this.loaded;
     }
 
     /**
      * !#en Returns whether the sprite frame is rotated in the texture.
      * !#zh 获取 SpriteFrame 是否旋转
-     * @method isRotated
-     * @return {Boolean}
      */
-    isRotated() {
+    public isRotated () {
         return this._rotated;
     }
 
     /**
      * !#en Set whether the sprite frame is rotated in the texture.
      * !#zh 设置 SpriteFrame 是否旋转
-     * @method setRotated
-     * @param {Boolean} bRotated
+     * @param value
      */
-    setRotated(bRotated) {
-        this._rotated = bRotated;
+    public setRotated (rotated: boolean) {
+        this._rotated = rotated;
     }
 
     /**
      * !#en Returns the rect of the sprite frame in the texture.
      * !#zh 获取 SpriteFrame 的纹理矩形区域
-     * @method getRect
-     * @return {Rect}
      */
-    getRect() {
-        return cc.rect(this._rect);
+    public getRect () {
+        return rect(this._rect);
     }
 
     /**
      * !#en Sets the rect of the sprite frame in the texture.
      * !#zh 设置 SpriteFrame 的纹理矩形区域
-     * @method setRect
-     * @param {Rect} rect
      */
-    setRect(rect) {
+    public setRect (rect: Rect) {
         this._rect = rect;
     }
 
     /**
      * !#en Returns the original size of the trimmed image.
      * !#zh 获取修剪前的原始大小
-     * @method getOriginalSize
-     * @return {Size}
      */
-    getOriginalSize() {
-        return cc.size(this._originalSize);
+    public getOriginalSize () {
+        return size(this._originalSize);
     }
 
     /**
      * !#en Sets the original size of the trimmed image.
      * !#zh 设置修剪前的原始大小
-     * @method setOriginalSize
-     * @param {Size} size
      */
-    setOriginalSize(size) {
-        if (!this._originalSize) {
-            this._originalSize = cc.size(size);
-        } else {
-            this._originalSize.width = size.width;
-            this._originalSize.height = size.height;
-        }
+    public setOriginalSize (size: Size) {
+        this._originalSize.set(size);
     }
 
     /**
@@ -308,15 +311,16 @@ export default class SpriteFrame extends Texture2D {
     //     return this._texture;
     // }
 
-    _textureLoadedCallback() {
-        let self = this;
+    public _textureLoadedCallback () {
+        const self = this;
         // let texture = this._texture;
         // if (!texture) {
         //     // clearTexture called while loading texture...
         //     return;
         // }
         // let w = texture.width, h = texture.height;
-        let w = self.width, h = self.height;
+        let w = self.width;
+        let h = self.height;
 
         if (self._rotated && cc.game.renderType === cc.game.RENDER_TYPE_CANVAS) {
             // TODO: rotate texture for canvas
@@ -331,8 +335,7 @@ export default class SpriteFrame extends Texture2D {
 
         if (self._rect) {
             self._checkRect(/*self._texture*/);
-        }
-        else {
+        } else {
             self.setRect(cc.rect(0, 0, w, h));
         }
 
@@ -347,7 +350,7 @@ export default class SpriteFrame extends Texture2D {
         self._calculateUV();
 
         // dispatch 'load' event of cc.SpriteFrame
-        self.emit("load");
+        self.emit('load');
     }
 
     /*
@@ -373,7 +376,7 @@ export default class SpriteFrame extends Texture2D {
      * @method getOffset
      * @return {Vec2}
      */
-    getOffset() {
+    public getOffset () {
         return cc.v2(this._offset);
     }
 
@@ -383,7 +386,7 @@ export default class SpriteFrame extends Texture2D {
      * @method setOffset
      * @param {Vec2} offsets
      */
-    setOffset(offsets) {
+    public setOffset (offsets) {
         this._offset = cc.v2(offsets);
     }
 
@@ -477,7 +480,7 @@ export default class SpriteFrame extends Texture2D {
      *     spriteFrame.ensureLoadTexture();
      * }
      */
-    ensureLoadTexture() {
+    public ensureLoadTexture () {
         // if (this._texture) {
         // if (!this._texture.loaded) {
         if (!this.loaded) {
@@ -509,14 +512,14 @@ export default class SpriteFrame extends Texture2D {
     //     this._texture = null;   // TODO - release texture
     // }
 
-    _checkRect(/*texture*/) {
-        let rect = this._rect;
-        let maxX = rect.x, maxY = rect.y;
+    public _checkRect (/*texture*/) {
+        const rect = this._rect;
+        let maxX = rect.x;
+        let maxY = rect.y;
         if (this._rotated) {
             maxX += rect.height;
             maxY += rect.width;
-        }
-        else {
+        } else {
             maxX += rect.width;
             maxY += rect.height;
         }
@@ -534,20 +537,20 @@ export default class SpriteFrame extends Texture2D {
         }
     }
 
-    _calculateSlicedUV() {
-        let rect = this._rect;
+    public _calculateSlicedUV () {
+        const rect = this._rect;
         // let atlasWidth = this._texture.width;
         // let atlasHeight = this._texture.height;
-        let atlasWidth = this._originalSize.width;
-        let atlasHeight = this._originalSize.height;
-        let leftWidth = this._capInsets[INSET_LEFT];
-        let rightWidth = this._capInsets[INSET_RIGHT];
-        let centerWidth = rect.width - leftWidth - rightWidth;
-        let topHeight = this._capInsets[INSET_TOP];
-        let bottomHeight = this._capInsets[INSET_BOTTOM];
-        let centerHeight = rect.height - topHeight - bottomHeight;
+        const atlasWidth = this._originalSize.width;
+        const atlasHeight = this._originalSize.height;
+        const leftWidth = this._capInsets[INSET_LEFT];
+        const rightWidth = this._capInsets[INSET_RIGHT];
+        const centerWidth = rect.width - leftWidth - rightWidth;
+        const topHeight = this._capInsets[INSET_TOP];
+        const bottomHeight = this._capInsets[INSET_BOTTOM];
+        const centerHeight = rect.height - topHeight - bottomHeight;
 
-        let uvSliced = this.uvSliced;
+        const uvSliced = this.uvSliced;
         uvSliced.length = 0;
         if (this._rotated) {
             temp_uvs[0].u = (rect.x) / atlasWidth;
@@ -560,17 +563,16 @@ export default class SpriteFrame extends Texture2D {
             temp_uvs[0].v = (rect.y + rect.width) / atlasHeight;
 
             for (let row = 0; row < 4; ++row) {
-                let rowD = temp_uvs[row];
+                const rowD = temp_uvs[row];
                 for (let col = 0; col < 4; ++col) {
-                    let colD = temp_uvs[3 - col];
+                    const colD = temp_uvs[3 - col];
                     uvSliced.push({
                         u: rowD.u,
-                        v: colD.v
+                        v: colD.v,
                     });
                 }
             }
-        }
-        else {
+        } else {
             temp_uvs[0].u = (rect.x) / atlasWidth;
             temp_uvs[1].u = (rect.x + leftWidth) / atlasWidth;
             temp_uvs[2].u = (rect.x + leftWidth + centerWidth) / atlasWidth;
@@ -581,32 +583,32 @@ export default class SpriteFrame extends Texture2D {
             temp_uvs[0].v = (rect.y + rect.height) / atlasHeight;
 
             for (let row = 0; row < 4; ++row) {
-                let rowD = temp_uvs[row];
+                const rowD = temp_uvs[row];
                 for (let col = 0; col < 4; ++col) {
-                    let colD = temp_uvs[col];
+                    const colD = temp_uvs[col];
                     uvSliced.push({
                         u: colD.u,
-                        v: rowD.v
+                        v: rowD.v,
                     });
                 }
             }
         }
     }
 
-    _calculateUV() {
-        let rect = this._rect,
-            // texture = this._texture,
-            uv = this.uv,
-            // texw = texture.width,
-            // texh = texture.height;
-            texw = this._originalSize.width,
-            texh = this._originalSize.height;
+    public _calculateUV () {
+        const rect = this._rect;
+        // texture = this._texture,
+        const uv = this.uv;
+        // texw = texture.width,
+        // texh = texture.height;
+        const texw = this._originalSize.width;
+        const texh = this._originalSize.height;
 
         if (this._rotated) {
-            let l = texw === 0 ? 0 : rect.x / texw;
-            let r = texw === 0 ? 0 : (rect.x + rect.height) / texw;
-            let b = texh === 0 ? 0 : (rect.y + rect.width) / texh;
-            let t = texh === 0 ? 0 : rect.y / texh;
+            const l = texw === 0 ? 0 : rect.x / texw;
+            const r = texw === 0 ? 0 : (rect.x + rect.height) / texw;
+            const b = texh === 0 ? 0 : (rect.y + rect.width) / texh;
+            const t = texh === 0 ? 0 : rect.y / texh;
             uv[0] = l;
             uv[1] = t;
             uv[2] = l;
@@ -615,12 +617,11 @@ export default class SpriteFrame extends Texture2D {
             uv[5] = t;
             uv[6] = r;
             uv[7] = b;
-        }
-        else {
-            let l = texw === 0 ? 0 : rect.x / texw;
-            let r = texw === 0 ? 0 : (rect.x + rect.width) / texw;
-            let b = texh === 0 ? 0 : (rect.y + rect.height) / texh;
-            let t = texh === 0 ? 0 : rect.y / texh;
+        } else {
+            const l = texw === 0 ? 0 : rect.x / texw;
+            const r = texw === 0 ? 0 : (rect.x + rect.width) / texw;
+            const b = texh === 0 ? 0 : (rect.y + rect.height) / texh;
+            const t = texh === 0 ? 0 : rect.y / texh;
             uv[0] = l;
             uv[1] = b;
             uv[2] = r;
@@ -631,7 +632,7 @@ export default class SpriteFrame extends Texture2D {
             uv[7] = t;
         }
 
-        let vertices = this.vertices;
+        const vertices = this.vertices;
         if (vertices) {
             vertices.nu.length = 0;
             vertices.nv.length = 0;
@@ -646,10 +647,10 @@ export default class SpriteFrame extends Texture2D {
 
     // SERIALIZATION
 
-    _serialize(exporting) {
-        let rect = this._rect;
-        let offset = this._offset;
-        let size = this._originalSize;
+    public _serialize (exporting) {
+        const rect = this._rect;
+        const offset = this._offset;
+        const size = this._originalSize;
         let uuid = this._uuid;
         // let texture = this._texture;
         // if (texture) {
@@ -672,7 +673,7 @@ export default class SpriteFrame extends Texture2D {
                 x: this.vertices.x,
                 y: this.vertices.y,
                 u: this.vertices.u,
-                v: this.vertices.v
+                v: this.vertices.v,
             };
         }
 
@@ -686,18 +687,18 @@ export default class SpriteFrame extends Texture2D {
             originalSize: size ? [size.width, size.height] : undefined,
             rotated: this._rotated ? 1 : undefined,
             capInsets: this._capInsets,
-            vertices: vertices
+            vertices,
         };
     }
 
-    _deserialize(data, handle) {
+    public _deserialize (data, handle) {
         super._deserialize(data.base, handle);
-        let rect = data.rect;
+        const rect = data.rect;
         if (rect) {
-            this.setRect(new cc.Rect(rect[0], rect[1], rect[2], rect[3]));
+            this.setRect(new Rect(rect[0], rect[1], rect[2], rect[3]));
         }
         if (data.offset) {
-            this.setOffset(new cc.Vec2(data.offset[0], data.offset[1]));
+            this.setOffset(new Vec2(data.offset[0], data.offset[1]));
         }
         if (data.originalSize) {
             this.setOriginalSize(new cc.Size(data.originalSize[0], data.originalSize[1]));
@@ -705,7 +706,7 @@ export default class SpriteFrame extends Texture2D {
         this._rotated = data.rotated === 1;
         this._name = data.name;
 
-        let capInsets = data.capInsets;
+        const capInsets = data.capInsets;
         if (capInsets) {
             this._capInsets[INSET_LEFT] = capInsets[INSET_LEFT];
             this._capInsets[INSET_TOP] = capInsets[INSET_TOP];
@@ -731,7 +732,7 @@ export default class SpriteFrame extends Texture2D {
         // }
     }
 
-    onLoaded() {
+    public onLoaded () {
         this.loaded = true;
         if (super.onLoaded) {
             super.onLoaded();
@@ -739,13 +740,21 @@ export default class SpriteFrame extends Texture2D {
 
         this._textureLoadedCallback();
     }
+
+    public copyWithZone (...args: any[]) {
+        return this.clone(...args);
+    }
+
+    public copy (...args: any[]) {
+        return this.clone(...args);
+    }
+
+    // public initWithTexture (...args: any[]) {
+    //     return this.setTexture(...args);
+    // }
 }
 
-let proto = SpriteFrame.prototype;
-
-proto.copyWithZone = proto.clone;
-proto.copy = proto.clone;
-// proto.initWithTexture = proto.setTexture;
+const proto = SpriteFrame.prototype;
 
 addon(proto, EventTarget.prototype);
 
