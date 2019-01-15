@@ -25,8 +25,7 @@
  ****************************************************************************/
 
 import CCClass from '../data/class';
-import {clampf} from '../utils/misc';
-import {vec2} from '../vmath';
+import {clamp, vec2} from '../vmath';
 import Mat4 from './mat4';
 import { ValueType } from './value-type';
 
@@ -173,8 +172,8 @@ export default class Vec2 extends ValueType {
      * var v3 = cc.v2(10, 10).clamp(min_inclusive, max_inclusive); // Vec2 {x: 10, y: 10};
      */
     public clampf (min_inclusive: Vec2, max_inclusive: Vec2) {
-        this.x = clampf(this.x, min_inclusive.x, max_inclusive.x);
-        this.y = clampf(this.y, min_inclusive.y, max_inclusive.y);
+        this.x = clamp(this.x, min_inclusive.x, max_inclusive.x);
+        this.y = clamp(this.y, min_inclusive.y, max_inclusive.y);
         return this;
     }
 
@@ -305,7 +304,7 @@ export default class Vec2 extends ValueType {
     /**
      * !#en Multiplies two vectors, and returns the new result.
      * !#zh 分量相乘，并返回新的结果。
-     * 
+     *
      * @param vector
      * @param [out] - optional, the receiving vector, you can pass the same vec2
      * to save result to itself, if not provided, a new vec2 will be created
@@ -342,7 +341,7 @@ export default class Vec2 extends ValueType {
     /**
      * !#en Divides by a number, and returns the new result.
      * !#zh 向量除法，并返回新的结果。
-     * 
+     *
      * @param divisor
      * @param [out] - optional, the receiving vector, you can pass the same vec2
      * to save result to itself, if not provided, a new vec2 will be created
@@ -510,7 +509,7 @@ export default class Vec2 extends ValueType {
 
         const dot = this.dot(vector);
         let theta = dot / (Math.sqrt(magSqr1 * magSqr2));
-        theta = clampf(theta, -1.0, 1.0);
+        theta = clamp(theta, -1.0, 1.0);
         return Math.acos(theta);
     }
 
