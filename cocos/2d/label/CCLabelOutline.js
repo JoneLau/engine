@@ -37,7 +37,7 @@
  *  node.parent = this.node;
  */
 
-import Component from '../../components/CCComponent';
+import Component from '../../components/component';
 
 export default class LabelOutline extends Component {
     _color = cc.color(255, 255, 255, 255);

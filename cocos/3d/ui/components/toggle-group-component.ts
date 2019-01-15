@@ -23,7 +23,7 @@
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE.
  ****************************************************************************/
-import Component from '../../../components/CCComponent';
+import Component from '../../../components/component';
 import { ccclass, menu, executionOrder, executeInEditMode, property } from '../../../core/data/class-decorator';
 import ToggleComponent from './toggle-component';
 

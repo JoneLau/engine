@@ -24,7 +24,7 @@
  THE SOFTWARE.
  ****************************************************************************/
 //@ts-check
-import Component from '../../../components/CCComponent';
+import Component from '../../../components/component';
 import { lerp } from '../../../core/utils/misc';
 import { ccclass, menu, executionOrder, executeInEditMode, property } from '../../../core/data/class-decorator';
 import * as math from '../../../core/vmath/index';
