@@ -24,21 +24,28 @@
  THE SOFTWARE.
  ****************************************************************************/
 
-import * as js from '../core/utils/js';
-import IdGenerator from '../core/utils/id-generator';
-import { CCObject } from '../core/data/object';
+import { Component } from '../components/component';
 import { ccclass, property } from '../core/data/class-decorator';
+import { CCObject } from '../core/data/object';
+import IdGenerator from '../core/utils/id-generator';
+import * as js from '../core/utils/js';
+import { baseNodePolyfill } from './base-node-dev';
 
+type Constructor<T = {}> = new (...args: any[]) => T;
+
+// @ts-ignore
 const Destroying = CCObject.Flags.Destroying;
+// @ts-ignore
 const DontDestroy = CCObject.Flags.DontDestroy;
+// @ts-ignore
 const Deactivating = CCObject.Flags.Deactivating;
 
 const CHILD_ADDED = 'child-added';
 const CHILD_REMOVED = 'child-removed';
 
-var idGenerator = new IdGenerator('Node');
+const idGenerator = new IdGenerator('Node');
 
-function getConstructor(typeOrClassName) {
+function getConstructor (typeOrClassName: string | Function): Function | null {
     if (!typeOrClassName) {
         cc.errorID(3804);
         return null;
@@ -48,72 +55,6 @@ function getConstructor(typeOrClassName) {
     }
 
     return typeOrClassName;
-}
-
-function findComponent(node, constructor) {
-    if (constructor._sealed) {
-        for (let i = 0; i < node._components.length; ++i) {
-            let comp = node._components[i];
-            if (comp.constructor === constructor) {
-                return comp;
-            }
-        }
-    }
-    else {
-        for (let i = 0; i < node._components.length; ++i) {
-            let comp = node._components[i];
-            if (comp instanceof constructor) {
-                return comp;
-            }
-        }
-    }
-    return null;
-}
-
-function findComponents(node, constructor, components) {
-    if (constructor._sealed) {
-        for (let i = 0; i < node._components.length; ++i) {
-            let comp = node._components[i];
-            if (comp.constructor === constructor) {
-                components.push(comp);
-            }
-        }
-    }
-    else {
-        for (let i = 0; i < node._components.length; ++i) {
-            let comp = node._components[i];
-            if (comp instanceof constructor) {
-                components.push(comp);
-            }
-        }
-    }
-}
-
-function findChildComponent(children, constructor) {
-    for (var i = 0; i < children.length; ++i) {
-        var node = children[i];
-        var comp = findComponent(node, constructor);
-        if (comp) {
-            return comp;
-        }
-        else if (node._children.length > 0) {
-            comp = findChildComponent(node._children, constructor);
-            if (comp) {
-                return comp;
-            }
-        }
-    }
-    return null;
-}
-
-function findChildComponents(children, constructor, components) {
-    for (var i = 0; i < children.length; ++i) {
-        var node = children[i];
-        findComponents(node, constructor, components);
-        if (node._children.length > 0) {
-            findChildComponents(node._children, constructor, components);
-        }
-    }
 }
 
 /**
@@ -131,44 +72,8 @@ function findChildComponents(children, constructor, components) {
  * @param {String} [name]
  * @private
  */
-@ccclass("cc._BaseNode")
+@ccclass('cc._BaseNode')
 export class BaseNode extends CCObject {
-    @property
-    _parent = null;
-
-    @property
-    _children = [];
-
-    @property
-    _active = true;
-
-    /**
-     * @property _level
-     * @type {Number}
-     * @default 0
-     * @private
-     */
-    @property
-    _level = 0;
-
-    /**
-     * @property _components
-     * @type {Component[]}
-     * @default []
-     * @readOnly
-     * @private
-     */
-    @property
-    _components = [];
-
-    /**
-     * The PrefabInfo object
-     * @property _prefab
-     * @type {PrefabInfo}
-     * @private
-     */
-    @property
-    _prefab = null;
 
     /**
      * If true, the node is an persist node which won't be destroyed during scene transition.
@@ -179,14 +84,13 @@ export class BaseNode extends CCObject {
      * @private
      */
     @property
-    get _persistNode() {
+    get _persistNode () {
         return (this._objFlags & DontDestroy) > 0;
     }
-    set _persistNode(value) {
+    set _persistNode (value) {
         if (value) {
             this._objFlags |= DontDestroy;
-        }
-        else {
+        } else {
             this._objFlags &= ~DontDestroy;
         }
     }
@@ -203,10 +107,10 @@ export class BaseNode extends CCObject {
      * cc.log("Node Name: " + node.name);
      */
     @property
-    get name() {
+    get name () {
         return this._name;
     }
-    set name(value) {
+    set name (value) {
         if (CC_DEV && value.indexOf('/') !== -1) {
             cc.errorID(1632);
             return;
@@ -224,7 +128,7 @@ export class BaseNode extends CCObject {
      * cc.log("Node Uuid: " + node.uuid);
      */
     @property
-    get uuid() {
+    get uuid () {
         return this._id;
     }
 
@@ -241,7 +145,7 @@ export class BaseNode extends CCObject {
      * }
      */
     @property
-    get children() {
+    get children () {
         return this._children;
     }
 
@@ -256,7 +160,7 @@ export class BaseNode extends CCObject {
      * cc.log("Node Children Count: " + count);
      */
     @property
-    get childrenCount() {
+    get childrenCount () {
         return this._children.length;
     }
 
@@ -264,7 +168,8 @@ export class BaseNode extends CCObject {
      * !#en
      * The local active state of this node.<br/>
      * Note that a Node may be inactive because a parent is not active, even if this returns true.<br/>
-     * Use {{#crossLink "Node/activeInHierarchy:property"}}{{/crossLink}} if you want to check if the Node is actually treated as active in the scene.
+     * Use {{#crossLink "Node/activeInHierarchy:property"}}{{/crossLink}}
+     * if you want to check if the Node is actually treated as active in the scene.
      * !#zh
      * 当前节点的自身激活状态。<br/>
      * 值得注意的是，一个节点的父节点如果不被激活，那么即使它自身设为激活，它仍然无法激活。<br/>
@@ -276,16 +181,16 @@ export class BaseNode extends CCObject {
      * node.active = false;
      */
     @property
-    get active() {
+    get active () {
         return this._active;
     }
-    set active(value) {
+    set active (value) {
         value = !!value;
         if (this._active !== value) {
             this._active = value;
-            var parent = this._parent;
+            const parent = this._parent;
             if (parent) {
-                var couldActiveInScene = parent._activeInHierarchy;
+                const couldActiveInScene = parent._activeInHierarchy;
                 if (couldActiveInScene) {
                     cc.director._nodeActivator.activateNode(this, value);
                 }
@@ -302,65 +207,176 @@ export class BaseNode extends CCObject {
      * cc.log("activeInHierarchy: " + node.activeInHierarchy);
      */
     @property
-    get activeInHierarchy() {
+    get activeInHierarchy () {
         return this._activeInHierarchy;
     }
+    get parent () {
+        return this._parent;
+    }
+    set parent (value) {
+        this.setParent(value);
+    }
+
+    public static _setScene (node: BaseNode) {
+        if (node instanceof cc.Scene) {
+            node._scene = node;
+        } else {
+            if (node._parent == null) {
+                cc.error('Node %s(%s) has not attached to a scene.', node.name, node.uuid);
+            } else {
+                node._scene = node._parent._scene;
+            }
+        }
+    }
+
+    private static idGenerator = idGenerator;
+
+    // For walk
+    private static _stacks: Array<Array<(BaseNode | null)>> = [[]];
+    private static _stackId = 0;
+
+    private static _findComponent (node: BaseNode, constructor: Function) {
+        // tslint:disable-next-line
+        if (constructor['_sealed']) {
+            for (const comp of node._components) {
+                if (comp.constructor === constructor) {
+                    return comp;
+                }
+            }
+        } else {
+            for (const comp of node._components) {
+                if (comp instanceof constructor) {
+                    return comp;
+                }
+            }
+        }
+        return null;
+    }
+
+    private static _findComponents (node: BaseNode, constructor: Function, components: Component[]) {
+        // tslint:disable-next-line
+        if (constructor['_sealed']) {
+            for (const comp of node._components) {
+                if (comp.constructor === constructor) {
+                    components.push(comp);
+                }
+            }
+        } else {
+            for (const comp of node._components) {
+                if (comp instanceof constructor) {
+                    components.push(comp);
+                }
+            }
+        }
+    }
+
+    private static _findChildComponent (children: BaseNode[], constructor) {
+        for (const node of children) {
+            let comp = BaseNode._findComponent(node, constructor);
+            if (comp) {
+                return comp;
+            } else if (node._children.length > 0) {
+                comp = BaseNode._findChildComponent(node._children, constructor);
+                if (comp) {
+                    return comp;
+                }
+            }
+        }
+        return null;
+    }
+
+    private static _findChildComponents (children: BaseNode[], constructor, components) {
+        for (const node of children) {
+            BaseNode._findComponents (node, constructor, components);
+            if (node._children.length > 0) {
+                BaseNode._findChildComponents(node._children, constructor, components);
+            }
+        }
+    }
+
+    @property
+    private _parent: BaseNode | null = null;
+
+    @property
+    private _children: BaseNode[] = [];
+
+    @property
+    private _active = true;
+
+    /**
+     * @default 0
+     */
+    @property
+    private _level = 0;
+
+    /**
+     * @default []
+     * @readOnly
+     */
+    @property
+    private _components: Component[] = [];
+
+    /**
+     * The PrefabInfo object
+     * @type {PrefabInfo}
+     */
+    @property
+    private _prefab: any = null;
+
+    /**
+     * !#en which scene this node belongs to.
+     * !#zh 此节点属于哪个场景。
+     * @type {cc.Scene}}
+     */
+    private _scene: any = null;
+
+    private _activeInHierarchy = false;
+
+    // TO DO
+    // @ts-ignore
+    private _id: string = CC_EDITOR ? Editor.Utils.UuidUtils.uuid() : idGenerator.getNewId();
+
+    /**
+     * Register all related EventTargets,
+     * all event callbacks will be removed in _onPreDestroy
+     * private __eventTargets: EventTarget[] = [];
+     */
+    private __eventTargets: any[] = [];
 
     /**
      * @method constructor
      * @param {String} [name]
      */
-    constructor (name) {
+    constructor (name?: string) {
         super(name);
         this._name = name !== undefined ? name : 'New Node';
-        this._activeInHierarchy = false;
-        this._id = CC_EDITOR ? Editor.Utils.UuidUtils.uuid() : idGenerator.getNewId();
 
-        cc.director._scheduler && cc.director._scheduler.enableForTarget(this);
-
-        /**
-         * Register all related EventTargets,
-         * all event callbacks will be removed in _onPreDestroy
-         * @property __eventTargets
-         * @type {EventTarget[]}
-         * @private
-         */
-        this.__eventTargets = [];
+        if (cc.director._scheduler) {
+            cc.director._scheduler.enableForTarget(this);
+        }
     }
 
     /**
      * !#en Get parent of the node.
      * !#zh 获取该节点的父节点。
-     * @method getParent
-     * @return {Node}
      * @example
      * var parent = this.node.getParent();
      */
-    getParent () {
-        return this._parent;
-    }
-    get parent() {
+    public getParent () {
         return this._parent;
     }
 
     /**
      * !#en Set parent of the node.
      * !#zh 设置该节点的父节点。
-     * @method setParent
-     * @param {Node} value
      * @example
      * node.setParent(newNode);
      */
-    setParent (value) {
+    public setParent (value: BaseNode | null) {
         if (this._parent === value) {
             return;
         }
-        if (CC_EDITOR && cc.engine && !cc.engine.isPlaying) {
-            if (_Scene.DetectConflict.beforeAddChild(this)) {
-                return;
-            }
-        }
-        var oldParent = this._parent;
+        const oldParent = this._parent;
         if (CC_DEBUG && oldParent && (oldParent._objFlags & Deactivating)) {
             cc.errorID(3821);
         }
@@ -374,43 +390,23 @@ export class BaseNode extends CCObject {
             }
             this._level = value._level + 1;
             value._children.push(this);
-            value.emit && value.emit(CHILD_ADDED, this);
+            if (value.emit) {
+                value.emit(CHILD_ADDED, this);
+            }
         }
         if (oldParent) {
             if (!(oldParent._objFlags & Destroying)) {
-                var removeAt = oldParent._children.indexOf(this);
+                const removeAt = oldParent._children.indexOf(this);
                 if (CC_DEV && removeAt < 0) {
                     return cc.errorID(1633);
                 }
                 oldParent._children.splice(removeAt, 1);
-                oldParent.emit && oldParent.emit(CHILD_REMOVED, this);
+                if (oldParent.emit) {
+                    oldParent.emit(CHILD_REMOVED, this);
+                }
             }
         }
         this._onHierarchyChanged(oldParent);
-    }
-    set parent(value) {
-        this.setParent(value);
-    }
-
-    /**
-     * !#en which scene this node belongs to.
-     * !#zh 此节点属于哪个场景。
-     * @property _scene
-     * @type {cc.Scene}}
-     * @private
-     */
-    _scene = null;
-
-    static _setScene(node) {
-        if (node instanceof cc.Scene) {
-            node._scene = node;
-        } else {
-            if (node._parent == null) {
-                cc.error('Node %s(%s) has not attached to a scene.', node.name, node.uuid);
-            } else {
-                node._scene = node._parent._scene;
-            }
-        }
     }
 
     // ABSTRACT INTERFACES
@@ -422,13 +418,12 @@ export class BaseNode extends CCObject {
      * when the setter of the node is available, <br/>
      * the property will be set via setter function.<br/>
      * !#zh 属性配置函数。在 attrs 的所有属性将被设置为节点属性。
-     * @method attr
-     * @param {Object} attrs - Properties to be set to node
+     * @param attrs - Properties to be set to node
      * @example
      * var attrs = { key: 0, num: 100 };
      * node.attr(attrs);
      */
-    attr (attrs) {
+    public attr (attrs: Object) {
         js.mixin(this, attrs);
     }
 
@@ -437,22 +432,22 @@ export class BaseNode extends CCObject {
     /**
      * !#en Returns a child from the container given its uuid.
      * !#zh 通过 uuid 获取节点的子节点。
-     * @method getChildByUuid
-     * @param {String} uuid - The uuid to find the child node.
-     * @return {Node} a Node whose uuid equals to the input parameter
+     * @param uuid - The uuid to find the child node.
+     * @return a Node whose uuid equals to the input parameter
      * @example
      * var child = node.getChildByUuid(uuid);
      */
-    getChildByUuid (uuid) {
+    public getChildByUuid (uuid: string) {
         if (!uuid) {
-            cc.log("Invalid uuid");
+            cc.log('Invalid uuid');
             return null;
         }
 
-        var locChildren = this._children;
-        for (var i = 0, len = locChildren.length; i < len; i++) {
-            if (locChildren[i]._id === uuid)
+        const locChildren = this._children;
+        for (let i = 0, len = locChildren.length; i < len; i++) {
+            if (locChildren[i]._id === uuid) {
                 return locChildren[i];
+            }
         }
         return null;
     }
@@ -460,22 +455,22 @@ export class BaseNode extends CCObject {
     /**
      * !#en Returns a child from the container given its name.
      * !#zh 通过名称获取节点的子节点。
-     * @method getChildByName
-     * @param {String} name - A name to find the child node.
-     * @return {Node} a CCNode object whose name equals to the input parameter
+     * @param name - A name to find the child node.
+     * @return a CCNode object whose name equals to the input parameter
      * @example
      * var child = node.getChildByName("Test Node");
      */
-    getChildByName (name) {
+    public getChildByName (name: string) {
         if (!name) {
-            cc.log("Invalid name");
+            cc.log('Invalid name');
             return null;
         }
 
-        var locChildren = this._children;
-        for (var i = 0, len = locChildren.length; i < len; i++) {
-            if (locChildren[i]._name === name)
+        const locChildren = this._children;
+        for (let i = 0, len = locChildren.length; i < len; i++) {
+            if (locChildren[i]._name === name) {
                 return locChildren[i];
+            }
         }
         return null;
     }
@@ -483,27 +478,27 @@ export class BaseNode extends CCObject {
     /**
      * !#en Returns a child from the container given its path.
      * !#zh 通过路径获取节点的子节点。
-     * @method getChildByPath
-     * @param {String} path - A path to find the child node.
-     * @return {Node} a CCNode object whose name equals to the input parameter
+     * @param path - A path to find the child node.
+     * @return a CCNode object whose name equals to the input parameter
      * @example
      * var child = node.getChildByPath("Test Node");
      */
-    getChildByPath (path) {
+    public getChildByPath (path: string) {
         const segments = path.split('/');
-        let lastNode = this;
+        let lastNode: BaseNode = this;
         for (const segment of segments) {
-            lastNode = lastNode.children.find(childNode => childNode.name === segment);
-            if (!lastNode) {
-                break;
+            const next = lastNode.children.find((childNode) => childNode.name === segment);
+            if (!next) {
+                return null;
             }
+            lastNode = next;
         }
         return lastNode;
     }
 
     // composition: ADD
 
-    addChild (child) {
+    public addChild (child: BaseNode): void {
 
         if (CC_DEV && !(child instanceof cc._BaseNode)) {
             return cc.errorID(1634, cc.js.getClassName(child));
@@ -521,13 +516,12 @@ export class BaseNode extends CCObject {
      * Inserts a child to the node at a specified index.
      * !#zh
      * 插入子节点到指定位置
-     * @method insertChild
-     * @param {Node} child - the child node to be inserted
-     * @param {Number} siblingIndex - the sibling index to place the child in
+     * @param child - the child node to be inserted
+     * @param siblingIndex - the sibling index to place the child in
      * @example
      * node.insertChild(child, 2);
      */
-    insertChild (child, siblingIndex) {
+    public insertChild (child: BaseNode, siblingIndex: number) {
         child.parent = this;
         child.setSiblingIndex(siblingIndex);
     }
@@ -537,16 +531,13 @@ export class BaseNode extends CCObject {
     /**
      * !#en Get the sibling index.
      * !#zh 获取同级索引。
-     * @method getSiblingIndex
-     * @return {Number}
      * @example
      * var index = node.getSiblingIndex();
      */
-    getSiblingIndex () {
+    public getSiblingIndex () {
         if (this._parent) {
             return this._parent._children.indexOf(this);
-        }
-        else {
+        } else {
             return 0;
         }
     }
@@ -554,12 +545,10 @@ export class BaseNode extends CCObject {
     /**
      * !#en Set the sibling index of this node.
      * !#zh 设置节点同级索引。
-     * @method setSiblingIndex
-     * @param {Number} index
      * @example
      * node.setSiblingIndex(1);
      */
-    setSiblingIndex (index) {
+    public setSiblingIndex (index: number) {
         if (!this._parent) {
             return;
         }
@@ -567,35 +556,34 @@ export class BaseNode extends CCObject {
             cc.errorID(3821);
             return;
         }
-        var siblings = this._parent._children;
+        const siblings = this._parent._children;
         index = index !== -1 ? index : siblings.length - 1;
-        var oldIndex = siblings.indexOf(this);
+        const oldIndex = siblings.indexOf(this);
         if (index !== oldIndex) {
             siblings.splice(oldIndex, 1);
             if (index < siblings.length) {
                 siblings.splice(index, 0, this);
-            }
-            else {
+            } else {
                 siblings.push(this);
             }
-            this._onSiblingIndexChanged && this._onSiblingIndexChanged(index);
+            if (this._onSiblingIndexChanged) {
+                this._onSiblingIndexChanged(index);
+            }
         }
     }
 
     /**
      * !#en Walk though the sub children tree of the current node.
-     * Each node, including the current node, in the sub tree will be visited two times, before all children and after all children.
+     * Each node, including the current node, in the sub tree will be visited two times,
+     * before all children and after all children.
      * This function call is not recursive, it's based on stack.
      * Please don't walk any other node inside the walk process.
      * !#zh 遍历该节点的子树里的所有节点并按规则执行回调函数。
      * 对子树中的所有节点，包含当前节点，会执行两次回调，prefunc 会在访问它的子节点之前调用，postfunc 会在访问所有子节点之后调用。
      * 这个函数的实现不是基于递归的，而是基于栈展开递归的方式。
      * 请不要在 walk 过程中对任何其他的节点嵌套执行 walk。
-     * @method walk
-     * @param {Function} prefunc The callback to process node when reach the node for the first time
-     * @param {_BaseNode} prefunc.target The current visiting node
-     * @param {Function} postfunc The callback to process node when re-visit the node after walked all children in its sub tree
-     * @param {_BaseNode} postfunc.target The current visiting node
+     * @param prefunc The callback to process node when reach the node for the first time
+     * @param postfunc The callback to process node when re-visit the node after walked all children in its sub tree
      * @example
      * node.walk(function (target) {
      *     console.log('Walked through node ' + target.name + ' for the first time');
@@ -603,11 +591,13 @@ export class BaseNode extends CCObject {
      *     console.log('Walked through node ' + target.name + ' after walked all children in its sub tree');
      * });
      */
-    walk (prefunc, postfunc) {
-        var BaseNode = cc._BaseNode;
-        var index = 1;
-        var children, curr, i, afterChildren;
-        var stack = BaseNode._stacks[BaseNode._stackId];
+    public walk (prefunc: (target: BaseNode) => void, postfunc?: (target: BaseNode) => void) {
+        // const BaseNode = cc._BaseNode;
+        let index = 1;
+        let children: BaseNode[] | null = null;
+        let curr: BaseNode | null = null;
+        let i = 0;
+        let stack = BaseNode._stacks[BaseNode._stackId];
         if (!stack) {
             stack = [];
             BaseNode._stacks.push(stack);
@@ -616,8 +606,8 @@ export class BaseNode extends CCObject {
 
         stack.length = 0;
         stack[0] = this;
-        var parent = null;
-        afterChildren = false;
+        let parent: BaseNode | null = null;
+        let afterChildren = false;
         while (index) {
             index--;
             curr = stack[index];
@@ -627,8 +617,7 @@ export class BaseNode extends CCObject {
             if (!afterChildren && prefunc) {
                 // pre call
                 prefunc(curr);
-            }
-            else if (afterChildren && postfunc) {
+            } else if (afterChildren && postfunc) {
                 // post call
                 postfunc(curr);
             }
@@ -638,8 +627,7 @@ export class BaseNode extends CCObject {
             // Do not repeatly visit child tree, just do post call and continue walk
             if (afterChildren) {
                 afterChildren = false;
-            }
-            else {
+            } else {
                 // Children not proceeded and has children, proceed to child tree
                 if (curr._children.length > 0) {
                     parent = curr;
@@ -647,9 +635,7 @@ export class BaseNode extends CCObject {
                     i = 0;
                     stack[index] = children[i];
                     index++;
-                }
-                // No children, then repush curr to be walked for post func
-                else {
+                } else {
                     stack[index] = curr;
                     index++;
                     afterChildren = true;
@@ -663,9 +649,7 @@ export class BaseNode extends CCObject {
                 if (children[i]) {
                     stack[index] = children[i];
                     index++;
-                }
-                // No children any more in this sub tree, go upward
-                else if (parent) {
+                } else if (parent) {
                     stack[index] = parent;
                     index++;
                     // Setup parent walk env
@@ -674,8 +658,7 @@ export class BaseNode extends CCObject {
                         children = parent._parent._children;
                         i = children.indexOf(parent);
                         parent = parent._parent;
-                    }
-                    else {
+                    } else {
                         // At root
                         parent = null;
                         children = null;
@@ -695,30 +678,32 @@ export class BaseNode extends CCObject {
     /**
      * !#en
      * Remove itself from its parent node. If cleanup is `true`, then also remove all events and actions. <br/>
-     * If the cleanup parameter is not passed, it will force a cleanup, so it is recommended that you always pass in the `false` parameter when calling this API.<br/>
+     * If the cleanup parameter is not passed, it will force a cleanup,
+     * so it is recommended that you always pass in the `false` parameter when calling this API.<br/>
      * If the node orphan, then nothing happens.
      * !#zh
      * 从父节点中删除该节点。如果不传入 cleanup 参数或者传入 `true`，那么这个节点上所有绑定的事件、action 都会被删除。<br/>
      * 因此建议调用这个 API 时总是传入 `false` 参数。<br/>
      * 如果这个节点是一个孤节点，那么什么都不会发生。
-     * @method removeFromParent
-     * @param {Boolean} [cleanup=true] - true if all actions and callbacks on this node should be removed, false otherwise.
+     * @param [cleanup=true] - true if all actions and callbacks on this node should be removed, false otherwise.
      * @see cc.Node#removeFromParentAndCleanup
      * @example
      * node.removeFromParent();
      * node.removeFromParent(false);
      */
-    removeFromParent (cleanup) {
+    public removeFromParent (cleanup?: boolean) {
         if (this._parent) {
-            if (cleanup === undefined)
+            if (cleanup === undefined) {
                 cleanup = true;
+            }
             this._parent.removeChild(this, cleanup);
         }
     }
 
     /**
      * !#en
-     * Removes a child from the container. It will also cleanup all running actions depending on the cleanup parameter. </p>
+     * Removes a child from the container.
+     * It will also cleanup all running actions depending on the cleanup parameter. </p>
      * If the cleanup parameter is not passed, it will force a cleanup. <br/>
      * "remove" logic MUST only be on this method  <br/>
      * If a class wants to extend the 'removeChild' behavior it only needs <br/>
@@ -726,14 +711,14 @@ export class BaseNode extends CCObject {
      * !#zh
      * 移除节点中指定的子节点，是否需要清理所有正在运行的行为取决于 cleanup 参数。<br/>
      * 如果 cleanup 参数不传入，默认为 true 表示清理。<br/>
-     * @method removeChild
-     * @param {Node} child - The child node which will be removed.
-     * @param {Boolean} [cleanup=true] - true if all running actions and callbacks on the child node will be cleanup, false otherwise.
+     * @param child - The child node which will be removed.
+     * @param [cleanup=true] - true if all running actions and callbacks on the child node
+     * will be cleanup, false otherwise.
      * @example
      * node.removeChild(newNode);
      * node.removeChild(newNode, false);
      */
-    removeChild (child, cleanup) {
+    public removeChild (child: BaseNode, cleanup?: boolean) {
         if (this._children.indexOf(child) > -1) {
             // If you don't do cleanup, the child's actions will not get removed and the
             if (cleanup || cleanup === undefined) {
@@ -746,28 +731,31 @@ export class BaseNode extends CCObject {
 
     /**
      * !#en
-     * Removes all children from the container and do a cleanup all running actions depending on the cleanup parameter. <br/>
+     * Removes all children from the container and
+     * do a cleanup all running actions depending on the cleanup parameter. <br/>
      * If the cleanup parameter is not passed, it will force a cleanup.
      * !#zh
      * 移除节点所有的子节点，是否需要清理所有正在运行的行为取决于 cleanup 参数。<br/>
      * 如果 cleanup 参数不传入，默认为 true 表示清理。
-     * @method removeAllChildren
-     * @param {Boolean} [cleanup=true] - true if all running actions on all children nodes should be cleanup, false otherwise.
+     * @param [cleanup=true] - true if all running actions on all children nodes
+     * should be cleanup, false otherwise.
      * @example
      * node.removeAllChildren();
      * node.removeAllChildren(false);
      */
-    removeAllChildren (cleanup) {
+    public removeAllChildren (cleanup?: boolean) {
         // not using detachChild improves speed here
-        var children = this._children;
-        if (cleanup === undefined)
+        const children = this._children;
+        if (cleanup === undefined) {
             cleanup = true;
-        for (var i = children.length - 1; i >= 0; i--) {
-            var node = children[i];
+        }
+        for (let i = children.length - 1; i >= 0; i--) {
+            const node = children[i];
             if (node) {
                 // If you don't do cleanup, the node's actions will not get removed and the
-                if (cleanup)
+                if (cleanup) {
                     node.cleanup();
+                }
 
                 node.parent = null;
             }
@@ -778,14 +766,12 @@ export class BaseNode extends CCObject {
     /**
      * !#en Is this node a child of the given node?
      * !#zh 是否是指定节点的子节点？
-     * @method isChildOf
-     * @param {Node} parent
-     * @return {Boolean} - Returns true if this node is a child, deep child or identical to the given node.
+     * @return True if this node is a child, deep child or identical to the given node.
      * @example
      * node.isChildOf(newNode);
      */
-    isChildOf (parent) {
-        var child = this;
+    public isChildOf (parent: BaseNode) {
+        let child: BaseNode | null = this;
         do {
             if (child === parent) {
                 return true;
@@ -805,22 +791,29 @@ export class BaseNode extends CCObject {
      * !#zh
      * 获取节点上指定类型的组件，如果节点有附加指定类型的组件，则返回，如果没有则为空。<br/>
      * 传入参数也可以是脚本的名称。
-     * @method getComponent
-     * @param {Function|String} typeOrClassName
-     * @return {Component | null}
      * @example
      * // get sprite component.
      * var sprite = node.getComponent(cc.Sprite);
+     */
+    public getComponent<T extends Component> (classConstructor: Constructor<T>): T | null;
+
+    /**
+     * !#en
+     * Returns the component of supplied type if the node has one attached, null if it doesn't.<br/>
+     * You can also get component in the node by passing in the name of the script.
+     * !#zh
+     * 获取节点上指定类型的组件，如果节点有附加指定类型的组件，则返回，如果没有则为空。<br/>
+     * 传入参数也可以是脚本的名称。
+     * @example
      * // get custom test calss.
      * var test = node.getComponent("Test");
-     * @typescript
-     * getComponent<T extends Component>(type: {prototype: T}): T
-     * getComponent(className: string): any
      */
-    getComponent (typeOrClassName) {
-        var constructor = getConstructor(typeOrClassName);
+    public getComponent (className: string): Component | null;
+
+    public getComponent (typeOrClassName: string | Function) {
+        const constructor = getConstructor(typeOrClassName);
         if (constructor) {
-            return findComponent(this, constructor);
+            return BaseNode._findComponent(this, constructor);
         }
         return null;
     }
@@ -828,20 +821,24 @@ export class BaseNode extends CCObject {
     /**
      * !#en Returns all components of supplied type in the node.
      * !#zh 返回节点上指定类型的所有组件。
-     * @method getComponents
-     * @param {Function|String} typeOrClassName
-     * @return {Component[]}
      * @example
      * var sprites = node.getComponents(cc.Sprite);
-     * var tests = node.getComponents("Test");
-     * @typescript
-     * getComponents<T extends Component>(type: {prototype: T}): T[]
-     * getComponents(className: string): any[]
      */
-    getComponents (typeOrClassName) {
-        var constructor = getConstructor(typeOrClassName), components = [];
+    public getComponents<T extends Component> (classConstructor: Constructor<T>): T[];
+
+    /**
+     * !#en Returns all components of supplied type in the node.
+     * !#zh 返回节点上指定类型的所有组件。
+     * @example
+     * var tests = node.getComponents("Test");
+     */
+    public getComponents (className: string): Component[];
+
+    public getComponents (typeOrClassName: string | Function) {
+        const constructor = getConstructor(typeOrClassName);
+        const components: Component[] = [];
         if (constructor) {
-            findComponents(this, constructor, components);
+            BaseNode._findComponents(this, constructor, components);
         }
         return components;
     }
@@ -849,20 +846,23 @@ export class BaseNode extends CCObject {
     /**
      * !#en Returns the component of supplied type in any of its children using depth first search.
      * !#zh 递归查找所有子节点中第一个匹配指定类型的组件。
-     * @method getComponentInChildren
-     * @param {Function|String} typeOrClassName
-     * @return {Component}
      * @example
      * var sprite = node.getComponentInChildren(cc.Sprite);
-     * var Test = node.getComponentInChildren("Test");
-     * @typescript
-     * getComponentInChildren<T extends Component>(type: {prototype: T}): T
-     * getComponentInChildren(className: string): any
      */
-    getComponentInChildren (typeOrClassName) {
-        var constructor = getConstructor(typeOrClassName);
+    public getComponentInChildren<T extends Component> (classConstructor: Constructor<T>): T | null;
+
+    /**
+     * !#en Returns the component of supplied type in any of its children using depth first search.
+     * !#zh 递归查找所有子节点中第一个匹配指定类型的组件。
+     * @example
+     * var Test = node.getComponentInChildren("Test");
+     */
+    public getComponentInChildren (className: string): Component | null;
+
+    public getComponentInChildren (typeOrClassName: string | Function) {
+        const constructor = getConstructor(typeOrClassName);
         if (constructor) {
-            return findChildComponent(this._children, constructor);
+            return BaseNode._findChildComponent(this._children, constructor);
         }
         return null;
     }
@@ -870,21 +870,25 @@ export class BaseNode extends CCObject {
     /**
      * !#en Returns all components of supplied type in self or any of its children.
      * !#zh 递归查找自身或所有子节点中指定类型的组件
-     * @method getComponentsInChildren
-     * @param {Function|String} typeOrClassName
-     * @return {Component[]}
      * @example
      * var sprites = node.getComponentsInChildren(cc.Sprite);
-     * var tests = node.getComponentsInChildren("Test");
-     * @typescript
-     * getComponentsInChildren<T extends Component>(type: {prototype: T}): T[]
-     * getComponentsInChildren(className: string): any[]
      */
-    getComponentsInChildren (typeOrClassName) {
-        var constructor = getConstructor(typeOrClassName), components = [];
+    public getComponentsInChildren<T extends Component> (classConstructor: Constructor<T>): T[];
+
+    /**
+     * !#en Returns all components of supplied type in self or any of its children.
+     * !#zh 递归查找自身或所有子节点中指定类型的组件
+     * @example
+     * var tests = node.getComponentsInChildren("Test");
+     */
+    public getComponentsInChildren (className: string): Component[];
+
+    public getComponentsInChildren (typeOrClassName: string | Function) {
+        const constructor = getConstructor(typeOrClassName);
+        const components: Component[] = [];
         if (constructor) {
-            findComponents(this, constructor, components);
-            findChildComponents(this._children, constructor, components);
+            BaseNode._findComponents(this, constructor, components);
+            BaseNode._findChildComponents(this._children, constructor, components);
         }
         return components;
     }
@@ -892,17 +896,20 @@ export class BaseNode extends CCObject {
     /**
      * !#en Adds a component class to the node. You can also add component to node by passing in the name of the script.
      * !#zh 向节点添加一个指定类型的组件类，你还可以通过传入脚本的名称来添加组件。
-     * @method addComponent
-     * @param {Function|String} typeOrClassName - The constructor or the class name of the component to add
-     * @return {Component} - The newly added component
      * @example
      * var sprite = node.addComponent(cc.Sprite);
-     * var test = node.addComponent("Test");
-     * @typescript
-     * addComponent<T extends Component>(type: {new(): T}): T
-     * addComponent(className: string): any
      */
-    addComponent (typeOrClassName) {
+    public addComponent<T extends Component> (classConstructor: Constructor<T>): T | null;
+
+    /**
+     * !#en Adds a component class to the node. You can also add component to node by passing in the name of the script.
+     * !#zh 向节点添加一个指定类型的组件类，你还可以通过传入脚本的名称来添加组件。
+     * @example
+     * var test = node.addComponent("Test");
+     */
+    public addComponent (className: string): Component | null;
+
+    public addComponent (typeOrClassName: string | Function) {
         if (CC_EDITOR && (this._objFlags & Destroying)) {
             cc.error('isDestroying');
             return null;
@@ -910,7 +917,7 @@ export class BaseNode extends CCObject {
 
         // get component
 
-        var constructor;
+        let constructor;
         if (typeof typeOrClassName === 'string') {
             constructor = js.getClassByName(typeOrClassName);
             if (!constructor) {
@@ -920,8 +927,7 @@ export class BaseNode extends CCObject {
                 }
                 return null;
             }
-        }
-        else {
+        } else {
             if (!typeOrClassName) {
                 cc.errorID(3804);
                 return null;
@@ -941,16 +947,16 @@ export class BaseNode extends CCObject {
         }
 
         if (CC_EDITOR && constructor._disallowMultiple) {
-            if (!this._checkMultipleComp(constructor)) {
+            if (!this._checkMultipleComp!(constructor)) {
                 return null;
             }
         }
 
         // check requirement
 
-        var ReqComp = constructor._requireComponent;
+        const ReqComp = constructor._requireComponent;
         if (ReqComp && !this.getComponent(ReqComp)) {
-            var depended = this.addComponent(ReqComp);
+            const depended = this.addComponent(ReqComp);
             if (!depended) {
                 // depend conflicts
                 return null;
@@ -959,13 +965,13 @@ export class BaseNode extends CCObject {
 
         //// check conflict
         //
-        //if (CC_EDITOR && !_Scene.DetectConflict.beforeAddComponent(this, constructor)) {
+        // if (CC_EDITOR && !_Scene.DetectConflict.beforeAddComponent(this, constructor)) {
         //    return null;
-        //}
+        // }
 
         //
 
-        var component = new constructor();
+        const component = new constructor();
         component.node = this;
         this._components.push(component);
         if ((CC_EDITOR || CC_TEST) && cc.engine && (this._id in cc.engine.attachedObjsForEditor)) {
@@ -985,68 +991,47 @@ export class BaseNode extends CCObject {
      * !#zh
      * 删除节点上的指定组件，传入参数可以是一个组件构造函数或组件名，也可以是已经获得的组件引用。
      * 如果你已经获得组件引用，你也可以直接调用 component.destroy()
-     * @method removeComponent
-     * @param {String|Function|Component} component - The need remove component.
      * @deprecated please destroy the component to remove it.
      * @example
      * node.removeComponent(cc.Sprite);
-     * var Test = require("Test");
-     * node.removeComponent(Test);
      */
-    removeComponent (component) {
+    public removeComponent<T extends Component> (classConstructor: Constructor<T>): void;
+
+    /**
+     * !#en
+     * Removes a component identified by the given name or removes the component object given.
+     * You can also use component.destroy() if you already have the reference.
+     * !#zh
+     * 删除节点上的指定组件，传入参数可以是一个组件构造函数或组件名，也可以是已经获得的组件引用。
+     * 如果你已经获得组件引用，你也可以直接调用 component.destroy()
+     * @deprecated please destroy the component to remove it.
+     * @example
+     * const sprite = node.getComponent(CC.Sprite);
+     * if (sprite) {
+     *     node.removeComponent(sprite);
+     * }
+     * node.removeComponent('cc.Sprite');
+     */
+    public removeComponent (classNameOrInstance: string | Component): void;
+
+    public removeComponent (component: any) {
         if (!component) {
             cc.errorID(3813);
             return;
         }
-        if (!(component instanceof cc.Component)) {
-            component = this.getComponent(component);
+        let componentInstance: Component | null = null;
+        if (component instanceof Component) {
+            componentInstance = component;
+        } else {
+            componentInstance = this.getComponent(component);
         }
-        if (component) {
-            component.destroy();
-        }
-    }
-
-    // do remove component, only used internally
-    _removeComponent (component) {
-        if (!component) {
-            cc.errorID(3814);
-            return;
-        }
-
-        if (!(this._objFlags & Destroying)) {
-            var i = this._components.indexOf(component);
-            if (i !== -1) {
-                this._components.splice(i, 1);
-                if ((CC_EDITOR || CC_TEST) && cc.engine) {
-                    delete cc.engine.attachedObjsForEditor[component._id];
-                }
-            }
-            else if (component.node !== this) {
-                cc.errorID(3815);
-            }
+        if (componentInstance) {
+            componentInstance.destroy();
         }
     }
 
-    _disableChildComps () {
-        // leave this._activeInHierarchy unmodified
-        var i, len = this._components.length;
-        for (i = 0; i < len; ++i) {
-            var component = this._components[i];
-            if (component._enabled) {
-                cc.director._compScheduler.disableComp(component);
-            }
-        }
-        // deactivate recursively
-        for (i = 0, len = this._children.length; i < len; ++i) {
-            var node = this._children[i];
-            if (node._active) {
-                node._disableChildComps();
-            }
-        }
-    }
-
-    destroy () {
-        if (cc.Object.prototype.destroy.call(this)) {
+    public destroy () {
+        if (super.destroy()) {
             // disable hierarchy
             if (this._activeInHierarchy) {
                 this._disableChildComps();
@@ -1061,29 +1046,95 @@ export class BaseNode extends CCObject {
      * !#zh
      * 销毁所有子节点，并释放所有它们对其它对象的引用。<br/>
      * 实际销毁操作会延迟到当前帧渲染前执行。
-     * @method destroyAllChildren
      * @example
      * node.destroyAllChildren();
      */
-    destroyAllChildren () {
-        var children = this._children;
-        for (var i = 0; i < children.length; ++i) {
-            children[i].destroy();
+    public destroyAllChildren () {
+        for (const child of this._children) {
+            child.destroy();
         }
     }
 
-    cleanup () {}
-    _onSetParent(oldParent) {
-        if ((oldParent == null || oldParent._scene != this._parent._scene) && this._parent._scene != null) {
-            this.walk(this.constructor._setScene);
+    public cleanup () {
+        return;
+    }
+
+    public emit? (type: string, ...args: any[]): void;
+
+    protected _onSetParent (oldParent: BaseNode | null) {
+        if ((oldParent == null || oldParent._scene !== this._parent!._scene) && this._parent!._scene != null) {
+            this.walk((node) => {
+                BaseNode._setScene(node);
+            });
         }
     }
-    _onPostActivated () {}
-    _onBatchRestored () {}
-    _onBatchCreated () {}
 
-    _onHierarchyChanged (oldParent) {
-        var newParent = this._parent;
+    protected _onPostActivated () {
+        return;
+    }
+
+    protected _onBatchRestored () {
+        return;
+    }
+
+    protected _onBatchCreated () {
+        return;
+    }
+
+    protected _onPreDestroy () {
+        // marked as destroying
+        this._objFlags |= Destroying;
+
+        // detach self and children from editor
+        const parent = this._parent;
+        const destroyByParent: boolean = (parent !== null) && ((parent._objFlags & Destroying) !== 0);
+        if (!destroyByParent && (CC_EDITOR || CC_TEST)) {
+            this._registerIfAttached!(false);
+        }
+
+        // destroy children
+        // destroy children
+        for (const child of this._children) {
+            // destroy immediate so its _onPreDestroy can be called
+            child._destroyImmediate();
+        }
+
+        // destroy self components
+        for (const component of this._components) {
+            // destroy immediate so its _onPreDestroy can be called
+            // TO DO
+            // @ts-ignore
+            component._destroyImmediate();
+        }
+
+        for (const eventTarget of this.__eventTargets) {
+            if (eventTarget) {
+                eventTarget.targetOff(this);
+            }
+        }
+        this.__eventTargets.length = 0;
+
+        // remove from persist
+        if (this._persistNode) {
+            cc.game.removePersistRootNode(this);
+        }
+
+        if (!destroyByParent) {
+            // remove from parent
+            if (parent) {
+                const childIndex = parent._children.indexOf(this);
+                parent._children.splice(childIndex, 1);
+                if (parent.emit) {
+                    parent.emit('child-removed', this);
+                }
+            }
+        }
+
+        return destroyByParent;
+    }
+
+    protected _onHierarchyChanged (oldParent: BaseNode | null) {
+        const newParent = this._parent;
         if (this._persistNode && !(newParent instanceof cc.Scene)) {
             cc.game.removePersistRootNode(this);
             if (CC_EDITOR) {
@@ -1092,21 +1143,20 @@ export class BaseNode extends CCObject {
         }
 
         if (CC_EDITOR || CC_TEST) {
-            var scene = cc.director.getScene();
-            var inCurrentSceneBefore = oldParent && oldParent.isChildOf(scene);
-            var inCurrentSceneNow = newParent && newParent.isChildOf(scene);
+            const scene = cc.director.getScene();
+            const inCurrentSceneBefore = oldParent && oldParent.isChildOf(scene);
+            const inCurrentSceneNow = newParent && newParent.isChildOf(scene);
             if (!inCurrentSceneBefore && inCurrentSceneNow) {
                 // attached
-                this._registerIfAttached(true);
-            }
-            else if (inCurrentSceneBefore && !inCurrentSceneNow) {
+                this._registerIfAttached!(true);
+            } else if (inCurrentSceneBefore && !inCurrentSceneNow) {
                 // detached
-                this._registerIfAttached(false);
+                this._registerIfAttached!(false);
             }
 
             // update prefab
-            var newPrefabRoot = newParent && newParent._prefab && newParent._prefab.root;
-            var myPrefabInfo = this._prefab;
+            const newPrefabRoot = newParent && newParent._prefab && newParent._prefab.root;
+            const myPrefabInfo = this._prefab;
             // var PrefabUtils = Editor.require('scene://utils/prefab');
             // if (myPrefabInfo) {
             //     if (newPrefabRoot) {
@@ -1127,34 +1177,37 @@ export class BaseNode extends CCObject {
             // }
 
             // conflict detection
-            //_Scene.DetectConflict.afterAddChild(this);
+            // _Scene.DetectConflict.afterAddChild(this);
         }
 
-        var shouldActiveNow = this._active && !!(newParent && newParent._activeInHierarchy);
+        const shouldActiveNow = this._active && !!(newParent && newParent._activeInHierarchy);
         if (this._activeInHierarchy !== shouldActiveNow) {
             cc.director._nodeActivator.activateNode(this, shouldActiveNow);
         }
     }
 
-    _instantiate (cloned) {
+    protected _onHierarchyChangedBase (oldParent: BaseNode) {
+        return this._onHierarchyChanged(oldParent);
+    }
+
+    protected _instantiate (cloned) {
         if (!cloned) {
             cloned = cc.instantiate._clone(this, this);
         }
 
-        var thisPrefabInfo = this._prefab;
+        const thisPrefabInfo = this._prefab;
         if (CC_EDITOR && thisPrefabInfo) {
             if (this !== thisPrefabInfo.root) {
-                //var PrefabUtils = Editor.require('scene://utils/prefab');
-                //PrefabUtils.initClonedChildOfPrefab(cloned);
+                // var PrefabUtils = Editor.require('scene://utils/prefab');
+                // PrefabUtils.initClonedChildOfPrefab(cloned);
             }
         }
-        var syncing = thisPrefabInfo && this === thisPrefabInfo.root && thisPrefabInfo.sync;
+        const syncing = thisPrefabInfo && this === thisPrefabInfo.root && thisPrefabInfo.sync;
         if (syncing) {
-            //if (thisPrefabInfo._synced) {
+            // if (thisPrefabInfo._synced) {
             //    return clone;
-            //}
-        }
-        else if (CC_EDITOR && cc.engine._isPlaying) {
+            // }
+        } else if (CC_EDITOR && cc.engine._isPlaying) {
             cloned._name += ' (Clone)';
         }
 
@@ -1165,214 +1218,53 @@ export class BaseNode extends CCObject {
         return cloned;
     }
 
-    _onPreDestroy () {
-        var i, len;
-
-        // marked as destroying
-        this._objFlags |= Destroying;
-
-        // detach self and children from editor
-        var parent = this._parent;
-        var destroyByParent = parent && (parent._objFlags & Destroying);
-        if (!destroyByParent && (CC_EDITOR || CC_TEST)) {
-            this._registerIfAttached(false);
+    // do remove component, only used internally
+    private _removeComponent (component: Component) {
+        if (!component) {
+            cc.errorID(3814);
+            return;
         }
 
-        // destroy children
-        var children = this._children;
-        for (i = 0, len = children.length; i < len; ++i) {
-            // destroy immediate so its _onPreDestroy can be called
-            children[i]._destroyImmediate();
-        }
-
-        // destroy self components
-        for (i = 0, len = this._components.length; i < len; ++i) {
-            var component = this._components[i];
-            // destroy immediate so its _onPreDestroy can be called
-            component._destroyImmediate();
-        }
-
-        var eventTargets = this.__eventTargets;
-        for (i = 0, len = eventTargets.length; i < len; ++i) {
-            var target = eventTargets[i];
-            target && target.targetOff(this);
-        }
-        eventTargets.length = 0;
-
-        // remove from persist
-        if (this._persistNode) {
-            cc.game.removePersistRootNode(this);
-        }
-
-        if (!destroyByParent) {
-            // remove from parent
-            if (parent) {
-                var childIndex = parent._children.indexOf(this);
-                parent._children.splice(childIndex, 1);
-                parent.emit && parent.emit('child-removed', this);
+        if (!(this._objFlags & Destroying)) {
+            const i = this._components.indexOf(component);
+            if (i !== -1) {
+                this._components.splice(i, 1);
+                if ((CC_EDITOR || CC_TEST) && cc.engine) {
+                    delete cc.engine.attachedObjsForEditor[component._id];
+                }
+            } else if ((component.node as BaseNode) !== this) {
+                cc.errorID(3815);
             }
         }
+    }
 
-        return destroyByParent;
+    private _disableChildComps () {
+        // leave this._activeInHierarchy unmodified
+        for (const component of this._components) {
+            if (component._enabled) {
+                cc.director._compScheduler.disableComp(component);
+            }
+        }
+        // deactivate recursively
+        for (const node of this._children) {
+            if (node._active) {
+                node._disableChildComps();
+            }
+        }
+    }
+
+    private _onSiblingIndexChanged? (siblingIndex: number): void;
+
+    private _registerIfAttached? (attached: boolean): void;
+
+    private _checkMultipleComp? (constructor: Function): boolean;
+
+    private _onPreDestroyBase () {
+        return this._onPreDestroy();
     }
 }
 
-BaseNode.prototype._onPreDestroyBase = BaseNode.prototype._onPreDestroy;
-BaseNode.prototype._onHierarchyChangedBase = BaseNode.prototype._onHierarchyChanged;
-
-if (CC_EDITOR) {
-    BaseNode.prototype._checkMultipleComp = function (ctor) {
-        var existing = this.getComponent(ctor._disallowMultiple);
-        if (existing) {
-            if (existing.constructor === ctor) {
-                cc.errorID(3805, js.getClassName(ctor), this._name);
-            }
-            else {
-                cc.errorID(3806, js.getClassName(ctor), this._name, js.getClassName(existing));
-            }
-            return false;
-        }
-        return true;
-    };
-
-    /**
-     * This api should only used by undo system
-     * @method _addComponentAt
-     * @param {Component} comp
-     * @param {Number} index
-     * @private
-     */
-    BaseNode.prototype._addComponentAt = function (comp, index) {
-        if (this._objFlags & Destroying) {
-            return cc.error('isDestroying');
-        }
-        if (!(comp instanceof cc.Component)) {
-            return cc.errorID(3811);
-        }
-        if (index > this._components.length) {
-            return cc.errorID(3812);
-        }
-
-        // recheck attributes because script may changed
-        var ctor = comp.constructor;
-        if (ctor._disallowMultiple) {
-            if (!this._checkMultipleComp(ctor)) {
-                return;
-            }
-        }
-        var ReqComp = ctor._requireComponent;
-        if (ReqComp && !this.getComponent(ReqComp)) {
-            if (index === this._components.length) {
-                // If comp should be last component, increase the index because required component added
-                ++index;
-            }
-            var depended = this.addComponent(ReqComp);
-            if (!depended) {
-                // depend conflicts
-                return null;
-            }
-        }
-
-        comp.node = this;
-        this._components.splice(index, 0, comp);
-        if ((CC_EDITOR || CC_TEST) && cc.engine && (this._id in cc.engine.attachedObjsForEditor)) {
-            cc.engine.attachedObjsForEditor[comp._id] = comp;
-        }
-        if (this._activeInHierarchy) {
-            cc.director._nodeActivator.activateComp(comp);
-        }
-    };
-
-    /**
-     * @method _getDependComponent
-     * @param {Component} depended
-     * @return {Component}
-     * @private
-     */
-    BaseNode.prototype._getDependComponent = function (depended) {
-        for (var i = 0; i < this._components.length; i++) {
-            var comp = this._components[i];
-            if (comp !== depended && comp.isValid && !cc.Object._willDestroy(comp)) {
-                var depend = comp.constructor._requireComponent;
-                if (depend && depended instanceof depend) {
-                    return comp;
-                }
-            }
-        }
-        return null;
-    };
-
-    BaseNode.prototype.onRestore = function () {
-        // check activity state
-        var shouldActiveNow = this._active && !!(this._parent && this._parent._activeInHierarchy);
-        if (this._activeInHierarchy !== shouldActiveNow) {
-            cc.director._nodeActivator.activateNode(this, shouldActiveNow);
-        }
-    };
-
-    BaseNode.prototype._onPreDestroy = function () {
-        var destroyByParent = this._onPreDestroyBase();
-        if (!destroyByParent) {
-            // ensure this node can reattach to scene by undo system
-            // (simulate some destruct logic to make undo system work correctly)
-            this._parent = null;
-        }
-        return destroyByParent;
-    };
-
-    BaseNode.prototype._onRestoreBase = BaseNode.prototype.onRestore;
-}
-
-if (CC_EDITOR || CC_TEST) {
-    BaseNode.prototype._registerIfAttached = function (register) {
-        var attachedObjsForEditor = cc.engine.attachedObjsForEditor;
-        if (register) {
-            attachedObjsForEditor[this._id] = this;
-            for (let i = 0; i < this._components.length; i++) {
-                let comp = this._components[i];
-                attachedObjsForEditor[comp._id] = comp;
-            }
-            cc.engine.emit('node-attach-to-scene', this);
-        }
-        else {
-            cc.engine.emit('node-detach-from-scene', this);
-            delete attachedObjsForEditor[this._id];
-            for (let i = 0; i < this._components.length; i++) {
-                let comp = this._components[i];
-                delete attachedObjsForEditor[comp._id];
-            }
-        }
-        var children = this._children;
-        for (let i = 0, len = children.length; i < len; ++i) {
-            var child = children[i];
-            child._registerIfAttached(register);
-        }
-    };
-}
-
-if (CC_DEV) {
-    // promote debug info
-    js.get(BaseNode.prototype, ' INFO ', function () {
-        var path = '';
-        var node = this;
-        while (node && !(node instanceof cc.Scene)) {
-            if (path) {
-                path = node.name + '/' + path;
-            }
-            else {
-                path = node.name;
-            }
-            node = node._parent;
-        }
-        return this.name + ', path: ' + path;
-    });
-}
-
-BaseNode.idGenerator = idGenerator;
-
-// For walk
-BaseNode._stacks = [[]];
-BaseNode._stackId = 0;
+baseNodePolyfill(BaseNode);
 
 /**
  * !#en

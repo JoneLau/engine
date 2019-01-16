@@ -9,7 +9,9 @@ type Constructor<T = {}> = new(...args: any[]) => T;
 export type IEventTargetCallback = (...args: any[]) => void;
 
 export function EventTarget<Base extends Constructor<{}>> (base: Base) {
-    class EventTarget extends CallbacksInvoker(base) {
+    class EventTarget extends base {
+        private _callbacksInvoker = new CallbacksInvoker();
+
         /**
          * !#en Checks whether the EventTarget object has any callback registered for a specific type of event.
          * !#zh 检查事件目标对象是否有为特定类型的事件注册的回调。
@@ -18,7 +20,7 @@ export function EventTarget<Base extends Constructor<{}>> (base: Base) {
          * @return True if a callback of the specified type is registered; false otherwise.
          */
         public hasEventListener (type: string) {
-            return super.hasEventListener(type);
+            return this._callbacksInvoker.hasEventListener(type);
         }
 
         /**
@@ -46,8 +48,8 @@ export function EventTarget<Base extends Constructor<{}>> (base: Base) {
                 return;
             }
 
-            if (!super.hasEventListener(type, callback, target) ) {
-                this.add(type, callback, target);
+            if (!this._callbacksInvoker.hasEventListener(type, callback, target) ) {
+                this._callbacksInvoker.add(type, callback, target);
                 const targetImpl = (target as ITargetImpl);
                 if (target && targetImpl.__eventTargets) {
                     targetImpl.__eventTargets.push(this);
@@ -79,9 +81,9 @@ export function EventTarget<Base extends Constructor<{}>> (base: Base) {
          */
         public off (type: string, callback: IEventTargetCallback, target: Object | null = null) {
             if (!callback) {
-                this.removeAll(type);
+                this._callbacksInvoker.removeAll(type);
             } else {
-                this.remove(type, callback, target);
+                this._callbacksInvoker.remove(type, callback, target);
                 const targetImpl = (target as ITargetImpl);
                 if (target && targetImpl.__eventTargets) {
                     fastRemove(targetImpl.__eventTargets, this);
@@ -101,7 +103,7 @@ export function EventTarget<Base extends Constructor<{}>> (base: Base) {
          * @param {Object} target - The target to be searched for all related listeners
          */
         public targetOff (target: Object) {
-            this.removeAll();
+            this._callbacksInvoker.removeAll();
         }
 
         /**
@@ -122,15 +124,16 @@ export function EventTarget<Base extends Constructor<{}>> (base: Base) {
          */
         public once (type: string, callback: IEventTargetCallback, target: Object | null = null) {
             const eventType_hasOnceListener = '__ONCE_FLAG:' + type;
-            const hasOnceListener = super.hasEventListener(eventType_hasOnceListener, callback, target);
+            const hasOnceListener = this._callbacksInvoker.hasEventListener(
+                eventType_hasOnceListener, callback, target);
             if (!hasOnceListener) {
                 const onceWrapper = (...args: any[]) => {
                     this.off(type, onceWrapper, target);
-                    this.remove(eventType_hasOnceListener, callback, target);
+                    this._callbacksInvoker.remove(eventType_hasOnceListener, callback, target);
                     callback(...args);
                 };
                 this.on(type, onceWrapper, target);
-                this.add(eventType_hasOnceListener, callback, target);
+                this._callbacksInvoker.add(eventType_hasOnceListener, callback, target);
             }
         }
 
@@ -147,7 +150,7 @@ export function EventTarget<Base extends Constructor<{}>> (base: Base) {
          * eventTarget.emit('fire', message, emitter);
          */
         public emit (type: string, ...args: any[]) {
-            return super.invoke(type, ...args);
+            return this._callbacksInvoker.invoke(type, ...args);
         }
 
         /**
@@ -159,7 +162,7 @@ export function EventTarget<Base extends Constructor<{}>> (base: Base) {
          * @param event
          */
         public dispatchEvent (event: Event) {
-            return super.invoke(event.type, event);
+            return this._callbacksInvoker.invoke(event.type, event);
         }
     }
     return EventTarget;

@@ -86,162 +86,156 @@ interface ICallbackTable {
     [x: string]: CallbackList | undefined;
 }
 
-export function CallbacksHandler<Base extends Constructor<{}>> (base: Base) {
+/**
+ * The CallbacksHandler is an abstract class that can register and unregister callbacks by key.
+ * Subclasses should implement their own methods about how to invoke the callbacks.
+ * @private
+ */
+export class CallbacksHandler {
+    protected _callbackTable: ICallbackTable = js.createMap(true);
+
     /**
-     * The CallbacksHandler is an abstract class that can register and unregister callbacks by key.
-     * Subclasses should implement their own methods about how to invoke the callbacks.
-     * @private
+     * @param key
+     * @param callback
+     * @param [target] - can be null
      */
-    class CallbacksHandler {
-        protected _callbackTable: ICallbackTable = js.createMap(true);
-
-        /**
-         * @param key
-         * @param callback
-         * @param [target] - can be null
-         */
-        public add (key: string, callback: Function, target: object | null = null) {
-            let list = this._callbackTable[key];
-            if (!list) {
-                list = this._callbackTable[key] = callbackListPool.get() as CallbackList;
-            }
-            list.callbacks.push(callback);
-            list.targets.push(target || null);
+    public add (key: string, callback: Function, target: object | null = null) {
+        let list = this._callbackTable[key];
+        if (!list) {
+            list = this._callbackTable[key] = callbackListPool.get() as CallbackList;
         }
+        list.callbacks.push(callback);
+        list.targets.push(target || null);
+    }
 
-        /**
-         * Check if the specified key has any registered callback. If a callback is also specified,
-         * it will only return true if the callback is registered.
-         * @param key
-         * @param [callback]
-         * @param [target]
-         */
-        public hasEventListener (key: string, callback?: Function, target: Object | null = null) {
-            const list = this._callbackTable[key];
-            if (!list) {
-                return false;
-            }
-
-            // check any valid callback
-            const callbacks = list.callbacks;
-            if (!callback) {
-                // Make sure no cancelled callbacks
-                if (list.isInvoking) {
-                    for (const cb of callbacks) {
-                        if (cb) {
-                            return true;
-                        }
-                    }
-                    return false;
-                } else {
-                    return callbacks.length > 0;
-                }
-            }
-
-            target = target || null;
-            const targets = list.targets;
-            for (let i = 0; i < callbacks.length; ++i) {
-                if (callbacks[i] === callback && targets[i] === target) {
-                    return true;
-                }
-            }
+    /**
+     * Check if the specified key has any registered callback. If a callback is also specified,
+     * it will only return true if the callback is registered.
+     * @param key
+     * @param [callback]
+     * @param [target]
+     */
+    public hasEventListener (key: string, callback?: Function, target: Object | null = null) {
+        const list = this._callbackTable[key];
+        if (!list) {
             return false;
         }
 
-        /**
-         * Removes all callbacks registered in a certain event type or all callbacks registered with a certain target
-         * @param keyOrTarget - The event key to be removed or the target to be removed
-         */
-        public removeAll (keyOrTarget?: string | object) {
-            if (typeof keyOrTarget === 'string') {
-                // remove by key
-                const list = this._callbackTable[keyOrTarget];
-                if (list) {
-                    if (list.isInvoking) {
-                        list.cancelAll();
-                    } else {
-                        callbackListPool.put(list);
-                        delete this._callbackTable[keyOrTarget];
+        // check any valid callback
+        const callbacks = list.callbacks;
+        if (!callback) {
+            // Make sure no cancelled callbacks
+            if (list.isInvoking) {
+                for (const cb of callbacks) {
+                    if (cb) {
+                        return true;
                     }
                 }
-            } else if (keyOrTarget) {
-                // remove by target
-                for (const key in this._callbackTable) {
-                    if (this._callbackTable.hasOwnProperty(key)) {
-                        const list = this._callbackTable[key]!;
-                        if (list.isInvoking) {
-                            const targets = list.targets;
-                            for (let i = 0; i < targets.length; ++i) {
-                                if (targets[i] === keyOrTarget) {
-                                    list.cancel(i);
-                                }
-                            }
-                        } else {
-                            list.removeBy(list.targets, keyOrTarget);
-                        }
-                    }
-                }
+                return false;
+            } else {
+                return callbacks.length > 0;
             }
         }
 
-        public remove (key: string, callback: Function, target: Object | null = null) {
-            const list = this._callbackTable[key];
-            if (!list) {
-                return;
+        target = target || null;
+        const targets = list.targets;
+        for (let i = 0; i < callbacks.length; ++i) {
+            if (callbacks[i] === callback && targets[i] === target) {
+                return true;
             }
-            target = target || null;
-            const { callbacks, targets } = list;
-            for (let i = 0; i < callbacks.length; ++i) {
-                if (callbacks[i] === callback && targets[i] === target) {
+        }
+        return false;
+    }
+
+    /**
+     * Removes all callbacks registered in a certain event type or all callbacks registered with a certain target
+     * @param keyOrTarget - The event key to be removed or the target to be removed
+     */
+    public removeAll (keyOrTarget?: string | object) {
+        if (typeof keyOrTarget === 'string') {
+            // remove by key
+            const list = this._callbackTable[keyOrTarget];
+            if (list) {
+                if (list.isInvoking) {
+                    list.cancelAll();
+                } else {
+                    callbackListPool.put(list);
+                    delete this._callbackTable[keyOrTarget];
+                }
+            }
+        } else if (keyOrTarget) {
+            // remove by target
+            for (const key in this._callbackTable) {
+                if (this._callbackTable.hasOwnProperty(key)) {
+                    const list = this._callbackTable[key]!;
                     if (list.isInvoking) {
-                        list.cancel(i);
+                        const targets = list.targets;
+                        for (let i = 0; i < targets.length; ++i) {
+                            if (targets[i] === keyOrTarget) {
+                                list.cancel(i);
+                            }
+                        }
                     } else {
-                        fastRemoveAt(callbacks, i);
-                        fastRemoveAt(targets, i);
+                        list.removeBy(list.targets, keyOrTarget);
                     }
-                    break;
                 }
             }
         }
     }
-    return CallbacksHandler;
+
+    public remove (key: string, callback: Function, target: Object | null = null) {
+        const list = this._callbackTable[key];
+        if (!list) {
+            return;
+        }
+        target = target || null;
+        const { callbacks, targets } = list;
+        for (let i = 0; i < callbacks.length; ++i) {
+            if (callbacks[i] === callback && targets[i] === target) {
+                if (list.isInvoking) {
+                    list.cancel(i);
+                } else {
+                    fastRemoveAt(callbacks, i);
+                    fastRemoveAt(targets, i);
+                }
+                break;
+            }
+        }
+    }
 }
 
-export function CallbacksInvoker<Base extends Constructor<{}>> (base: Base) {
-    /**
-     * !#en The callbacks invoker to handle and invoke callbacks by key.
-     * !#zh CallbacksInvoker 用来根据 Key 管理并调用回调方法。
-     */
-    class CallbacksInvoker extends CallbacksHandler(base) {
-        public invoke (key: string, ...args: any[]) {
-            const list = this._callbackTable[key];
-            if (!list) {
-                return;
-            }
-            const rootInvoker = !list.isInvoking;
-            list.isInvoking = true;
+/**
+ * !#en The callbacks invoker to handle and invoke callbacks by key.
+ * !#zh CallbacksInvoker 用来根据 Key 管理并调用回调方法。
+ */
+export class CallbacksInvoker extends CallbacksHandler {
+    public invoke (key: string, ...args: any[]) {
+        const list = this._callbackTable[key];
+        if (!list) {
+            return;
+        }
+        const rootInvoker = !list.isInvoking;
+        list.isInvoking = true;
 
-            const { callbacks, targets } = list;
-            for (let i = 0, len = callbacks.length; i < len; ++i) {
-                const callback = callbacks[i];
-                if (!callback) {
-                    continue;
-                }
-                const target = targets[i];
-                if (target) {
-                    callback.call(target, ...args);
-                } else {
-                    callback(...args);
-                }
+        const { callbacks, targets } = list;
+        for (let i = 0, len = callbacks.length; i < len; ++i) {
+            const callback = callbacks[i];
+            if (!callback) {
+                continue;
             }
+            const target = targets[i];
+            if (target) {
+                callback.call(target, ...args);
+            } else {
+                callback(...args);
+            }
+        }
 
-            if (rootInvoker) {
-                list.isInvoking = false;
-                if (list.containCanceled) {
-                    list.purgeCanceled();
-                }
+        if (rootInvoker) {
+            list.isInvoking = false;
+            if (list.containCanceled) {
+                list.purgeCanceled();
             }
         }
     }
-    return CallbacksInvoker;
 }
