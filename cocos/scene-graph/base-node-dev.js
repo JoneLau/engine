@@ -1,5 +1,6 @@
 
 import { CCObject } from '../core/data/object';
+import * as js from '../core/utils/js';
 
 // @ts-ignore
 const Destroying = CCObject.Flags.Destroying;
