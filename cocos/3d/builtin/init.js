@@ -4,10 +4,11 @@ import ImageAsset from '../../assets/image-asset';
 import { Material } from '../assets/material';
 import { EffectAsset } from '../assets/effect-asset';
 import effects from './effects';
+import SpriteFrame from '../../assets/CCSpriteFrame';
 
 let builtinResMgr = {
     // this should be called after renderer initialized
-    initBuiltinRes: function(device) {
+    initBuiltinRes: function (device) {
         builtinResMgr.device = device;
         // let canvas = document.createElement('canvas');
         // let context = canvas.getContext('2d');
@@ -71,6 +72,15 @@ let builtinResMgr = {
         // whiteTexture._uuid = 'white-texture';
         // defaultTexture.image = canvasImage;
 
+        let spriteFrame = new SpriteFrame();
+        spriteFrame.setFilters(Texture2D.Filter.NEAREST, Texture2D.Filter.NEAREST);
+        spriteFrame.setWrapMode(Texture2D.WrapMode.REPEAT, Texture2D.WrapMode.REPEAT);
+        spriteFrame._uuid = 'default-spriteframe';
+        spriteFrame.image = canvasImage;
+        if (spriteFrame.onLoaded) {
+            spriteFrame.onLoaded();
+        }
+
         // essential builtin effects
         let efxs = effects.map(e => {
             let effect = Object.assign(new EffectAsset(), e);
@@ -82,6 +92,13 @@ let builtinResMgr = {
         defaultMtl._uuid = 'default-material';
         defaultMtl.setDefines({ USE_COLOR: true });
         defaultMtl.effectAsset = efxs[0];
+        defaultMtl.setProperty('color', cc.color('#FF00FF'));
+
+        // sprite material
+        let spriteMtl = new Material();
+        spriteMtl._uuid = 'sprite-material';
+        spriteMtl.effectAsset = efxs[2];
+        spriteMtl.define('USE_TEXTURE', true);
         defaultMtl.setProperty('color', cc.color('#FF00FF'));
 
         let builtins = {

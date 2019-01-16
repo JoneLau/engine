@@ -131,7 +131,7 @@ export class RenderScene {
         return null;
     }
 
-    public createModel<T extends Model> (clazz: new () => T): Model {
+    public createModel<T extends Model> (clazz: new () => T): T {
         const model = new clazz();
         model.initialize();
         model.scene = this;
